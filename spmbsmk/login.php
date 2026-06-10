@@ -9,17 +9,31 @@ if (isset($_SESSION['login'])) {
 
 $pesan = "";
 if (isset($_POST['masuk'])) {
-    $username = mysqli_real_escape_string($conn, $_POST['username']);
+    $username = $_POST['username'];
     $password = $_POST['password'];
 
-    // Jalur Darurat Aktif
-    if ($username === "Admin2" && $password === "SMKPB@#1") {
-        $_SESSION['login'] = true;
-        $_SESSION['admin_user'] = "admin";
-        header("Location: admin.php");
-        exit;
+    // Menyesuaikan query ke tabel 'pengguna'
+    $stmt = $conn->prepare("SELECT id, password FROM pengguna WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($row = $result->fetch_assoc()) {
+        // Verifikasi hash password
+        if (password_verify($password, $row['password'])) {
+            $_SESSION['login'] = true;
+            $_SESSION['admin_user'] = $username;
+            
+            // Opsional: Update status login di database jika perlu
+            // $conn->query("UPDATE pengguna SET is_logged_in = 1 WHERE id = " . $row['id']);
+            
+            header("Location: admin.php");
+            exit;
+        } else {
+            $pesan = "<div class='alert-danger'>Password salah!</div>";
+        }
     } else {
-        $pesan = "<div class='alert-danger'>Username atau Password Salah!</div>";
+        $pesan = "<div class='alert-danger'>Username tidak terdaftar!</div>";
     }
 }
 ?>

@@ -1,16 +1,18 @@
 <?php
 // koneksi.php
 $host = "localhost";
-$user = "root"; // Sesuaikan dengan user hosting Anda
-$pass = "Smkpb@#1";     // Sesuaikan dengan password hosting Anda
-$db   = "db_spmbsmkpb1"; // Sesuaikan dengan nama database Anda
+$user = "root"; 
+$pass = "Smkpb@#1"; 
+$db   = "db_spmbsmkpb1";
 
-$conn = mysqli_connect($host, $user, $pass, $db);
+// Gunakan @ untuk menyembunyikan detail error dari user umum
+$conn = @mysqli_connect($host, $user, $pass, $db);
 
 if (!$conn) {
-    die("Koneksi database gagal: " . mysqli_connect_error());
+    // Log error ke file sistem, jangan tampilkan ke user
+    error_log("Koneksi database gagal: " . mysqli_connect_error());
+    die("Sistem sedang dalam pemeliharaan. Silakan hubungi administrator.");
 }
 
-// WAJIB: Set charset untuk mencegah SQL Injection berbasis karakter aneh
 mysqli_set_charset($conn, "utf8mb4");
 ?>

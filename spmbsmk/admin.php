@@ -118,6 +118,7 @@ $result_mplb = mysqli_query($conn, $query_mplb);
         .berkas-item.success { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
         .berkas-item.danger { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
         .berkas-item .btn-lihat { background: #10b981; color: #fff; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-size: 11.5px; }
+        tbody tr:hover { background-color: #eef2ff !important; transition: 0.2s; }
     </style>
 </head>
 <body>

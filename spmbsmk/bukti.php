@@ -1,6 +1,12 @@
 <?php
 include 'koneksi.php';
 
+// Tambahan Keamanan: Cek apakah user yang login atau admin
+// Jika tidak, bisa diminta memasukkan NISN sebagai verifikasi tambahan
+if (!isset($_SESSION['login']) && !isset($_POST['verifikasi_nisn'])) {
+    // Anda bisa membuat form kecil untuk verifikasi NISN sebelum bukti muncul
+}
+
 if (!isset($_GET['no_pendaftaran'])) {
     header("Location: index.php");
     exit;

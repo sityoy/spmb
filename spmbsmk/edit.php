@@ -85,8 +85,9 @@ if (isset($_POST['submit'])) {
                 max="100" 
                 value="<?php echo $data['nilai_test']; ?>" 
                 oninput="if(this.value > 100) this.value = 100; if(this.value.includes('.')){ let p=this.value.split('.'); if(p[1].length>2) this.value=p[0]+'.'+p[1].substring(0,2); }" 
-                onblur="if(this.value !== '' && this.value < 75) this.value = 75;"
+                
                 required>
+                <!-- onblur="if(this.value !== '' && this.value < 75) this.value = 75;" -->
             <small style="color:#64748b; font-size:11px; margin-top:4px; display:block;">
                 *Rentang nilai <b>75.00 - 100.00</b>. Gunakan tanda <b>titik (.)</b> untuk desimal.
             </small>
@@ -95,6 +96,13 @@ if (isset($_POST['submit'])) {
         <a href="admin.php?tab=<?php echo $tab; ?>" class="btn-back">❌ Batal dan Kembali</a>
     </form>
 </div>
+
+<script>
+    document.querySelector('form').addEventListener('submit', function() {
+        document.querySelector('.btn-submit').disabled = true;
+        document.querySelector('.btn-submit').innerText = "Menyimpan...";
+    });
+</script>
 
 </body>
 </html>

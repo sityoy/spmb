@@ -20,8 +20,9 @@ include 'koneksi.php';
 // Validasi parameter wajib
 if (isset($_GET['id']) && isset($_GET['status'])) {
     $id = mysqli_real_escape_string($conn, $_GET['id']);
-    $status_request = $_GET['status'];
-    $tab = isset($_GET['tab']) ? $_GET['tab'] : 'akl'; // Mengembalikan admin ke tab asal
+    // Tambahkan sanitasi
+    $status_request = preg_replace('/[^a-zA-Z0-9 ]/', '', $_GET['status']);
+    $tab = preg_replace('/[^a-zA-Z0-9]/', '', $_GET['tab']);
 
     if ($status_request == 'Jadi') {
         // 1. Aksi Kunci Kelulusan (Lulus)

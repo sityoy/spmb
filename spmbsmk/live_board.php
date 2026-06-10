@@ -32,14 +32,8 @@ $order_logic = "ORDER BY CASE status_konfirmasi
                 END ASC, nilai_akhir DESC, tanggal_daftar ASC";
 
 if (!$is_locked) {
-    // RUMUS YANG SINKRON DENGAN ADMIN: ( (Nilai_Berkas_Bobot) + (Nilai_Test / 2) ) / 2
-    // Atau dalam SQL: (((((nilai_skl * 0.7) + (nilai_tka * 0.3)) / 2) + (nilai_test / 2)) / 2)
-    
-    // RUMUS SINKRON:
-// ( ( (Nilai_SKL * 0.7 + Nilai_TKA * 0.3) / 2 ) + nilai_test ) / 2
-// Ini artinya: [ (Berkas/2) + Nilai_Test ] / 2
-
-$rumus_sql = "(((((nilai_skl * 0.7) + (nilai_tka * 0.3)) / 2) + nilai_test) / 2)";
+    // RUMUS YANG SINKRON DENGAN ADMIN
+    $rumus_sql = "(((((nilai_skl * 0.7) + (nilai_tka * 0.3)) / 2) + nilai_test) / 2)";
 
     $query_live_akl = "SELECT *, $rumus_sql as nilai_akhir 
                        FROM pendaftar 
@@ -58,7 +52,7 @@ $rumus_sql = "(((((nilai_skl * 0.7) + (nilai_tka * 0.3)) / 2) + nilai_test) / 2)
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Live Board Peringkat Hasil Seleksi SPMB</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f1f5f9; color: #334155; margin: 0; padding: 0; }
@@ -74,7 +68,9 @@ $rumus_sql = "(((((nilai_skl * 0.7) + (nilai_tka * 0.3)) / 2) + nilai_test) / 2)
         
         /* Layout Papan Peringkat Responsive */
         .board-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .table-card { overflow: visible !important; background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); overflow: hidden; }
+        .table-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); overflow: hidden; }
+        .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; } /* Perbaikan UI/UX HP */
+        
         .dropdown-content {
             display: none; 
             position: absolute; 
@@ -90,14 +86,11 @@ $rumus_sql = "(((((nilai_skl * 0.7) + (nilai_tka * 0.3)) / 2) + nilai_test) / 2)
             text-align: left;
             color: #334155;
             cursor: default;
+            /* Mencegah terpotong layar di HP kecil */
+            max-width: 85vw;
         }
 
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-        }
-
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
         .info-row.bold { font-weight: 700; color: #0f172a; }
 
         .btn-nilai-dropdown {
@@ -118,13 +111,13 @@ $rumus_sql = "(((((nilai_skl * 0.7) + (nilai_tka * 0.3)) / 2) + nilai_test) / 2)
 
         .table-title { color: white; font-weight: bold; padding: 12px; font-size: 13px; text-align: center; letter-spacing: 0.5px; }
         
-        table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 380px; }
         th { background: #f8fafc; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #e2e8f0; }
         td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; text-align: center; }
         .text-left { text-align: left; }
         
         /* Badges status live board */
-        .badge-status-live { display: inline-block; padding: 2px 6px; font-size: 9px; font-weight: bold; border-radius: 4px; margin-left: 5px; text-transform: uppercase; vertical-align: middle; }
+        .badge-status-live { display: inline-block; padding: 2px 6px; font-size: 9px; font-weight: bold; border-radius: 4px; margin-top: 4px; text-transform: uppercase; line-height: 1.2; }
         .live-utama { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
         .live-cadangan { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
         .live-drop { background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb; text-decoration: line-through; }
@@ -133,7 +126,7 @@ $rumus_sql = "(((((nilai_skl * 0.7) + (nilai_tka * 0.3)) / 2) + nilai_test) / 2)
         .rank-cadangan { background-color: #ffffff; }
         .text-muted-drop { color: #9ca3af !important; text-decoration: line-through; }
         
-        .btn-back { display: block; text-align: center; width: max-content; margin: 25px auto 0 auto; color: #4f46e5; text-decoration: none; font-weight: 600; font-size: 14px; }
+        .btn-back { display: block; text-align: center; width: max-content; margin: 25px auto 0 auto; color: #4f46e5; text-decoration: none; font-weight: 600; font-size: 14px; padding: 10px 20px; border: 1px solid #e0e7ff; background: white; border-radius: 8px; }
         
         /* Kartu Kunci Pengumuman */
         .lock-card { background: white; border-radius: 12px; border: 1px solid #fca5a5; padding: 35px 20px; text-align: center; max-width: 480px; margin: 30px auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04); }
@@ -143,6 +136,8 @@ $rumus_sql = "(((((nilai_skl * 0.7) + (nilai_tka * 0.3)) / 2) + nilai_test) / 2)
 
         @media(max-width: 768px) {
             .board-layout { grid-template-columns: 1fr; }
+            /* Memastikan dropdown tidak keluar layar di kiri saat di klik di bagian tepi kanan */
+            .dropdown-content { right: 10px; left: auto; }
         }
     </style>
 </head>
@@ -175,6 +170,7 @@ $rumus_sql = "(((((nilai_skl * 0.7) + (nilai_tka * 0.3)) / 2) + nilai_test) / 2)
         <div class="board-layout">
             <div class="table-card">
                 <div class="table-title" style="background:#4f46e5;">AKUNTANSI & KEUANGAN LEMBAGA (AKL)</div>
+                <div class="table-responsive">
                 <table>
                     <thead>
                         <tr>
@@ -184,202 +180,213 @@ $rumus_sql = "(((((nilai_skl * 0.7) + (nilai_tka * 0.3)) / 2) + nilai_test) / 2)
                             <th>Nilai</th>
                         </tr>
                     </thead>
+                    <tbody>
                     <?php 
-$r = 1; 
-if (mysqli_num_rows($result_live_akl) > 0) { 
-    while ($row = mysqli_fetch_assoc($result_live_akl)) { 
-        // LOGIKA BADGE STATUS
-        if ($row['status_konfirmasi'] == 'Jadi') {
-            $cl_row = 'rank-utama';
-            $badge = "<span class='badge-status-live live-utama'>✓ FIX UTAMA</span>";
-        } elseif ($row['status_konfirmasi'] == 'Tidak Jadi') {
-            $cl_row = 'rank-cadangan text-muted-drop';
-            $badge = "<span class='badge-status-live live-drop'>BATAL</span>";
-        } else {
-            $cl_row = ($r <= $quota) ? 'rank-utama' : 'rank-cadangan';
-            $badge = ($r <= $quota) ? "<span class='badge-status-live live-utama'>UTAMA</span>" : "<span class='badge-status-live live-cadangan'>CADANGAN</span>";
-        }
-        
-        // VARIABEL MATEMATIKA STRUK KASIR (TRANSPARAN 100%)
-        // VARIABEL MATEMATIKA STRUK KASIR (SINKRON DENGAN RUMUS ADMIN)
-        $bobot_skl      = $row['nilai_skl'] * 0.7;
-        $bobot_tka      = $row['nilai_tka'] * 0.3;
-        $hasil_berkas   = ($bobot_skl + $bobot_tka) / 2; // Ini (Berkas / 2)
-        $nilai_test     = (float)$row['nilai_test'];    // Ini Nilai Test murni
-        $total_gabungan = $hasil_berkas + $nilai_test;  // Gabungan
-        $nilai_akhir_fix = $total_gabungan / 2;         // Total Akhir
-?>
-    <tr class="<?php echo $cl_row; ?>">
-        <td><b><?php echo $r++; ?></b></td>
-        <td class="text-left"><b><?php echo htmlspecialchars($row['nama_lengkap']); ?></b><?php echo $badge; ?></td>
-        <td class="text-left" style="font-size:11px;"><?php echo htmlspecialchars($row['asal_sekolah']); ?></td>
-        <td>
-            <div style="position:relative; display:inline-block;">
-                <button class="btn-nilai-dropdown" onclick="toggleInfoNilai(this)">
-                    <?php echo number_format($nilai_akhir_fix, 2); ?> <span>▼</span>
-                </button>
-                
-                <div class="dropdown-content">
-                    <div style="font-weight:800; color:#4f46e5; margin-bottom:10px; text-align:center; border-bottom:2px solid #f1f5f9; padding-bottom:6px;">
-                        RINCIAN PENILAIAN
-                    </div>
-                    
-                    <div class="info-row">
-                        <span>Sidanira (70%)</span> 
-                        <span><?php echo number_format($bobot_skl, 2); ?></span>
-                    </div>
-                    <div class="info-row">
-                        <span>TKA (30%)</span> 
-                        <span><?php echo number_format($bobot_tka, 2); ?></span>
-                    </div>
-                    <hr style="margin:6px 0; border:0; border-top:1px dashed #cbd5e1;">
-                    
-                    <div class="info-row bold">
-                        <span>Hasil Berkas (bagi 2)</span> 
-                        <span><?php echo number_format($hasil_berkas, 2); ?></span>
-                    </div>
-                    <div class="info-row">
-                        <span>Nilai Uji (Test)</span> 
-                        <span><?php echo number_format($nilai_test, 2); ?></span>
-                    </div>
-                    <hr style="margin:6px 0; border:0; border-top:1px solid #94a3b8;">
-                    
-                    <div class="info-row bold">
-                        <span>Total (Berkas+Test)</span> 
-                        <span><?php echo number_format($total_gabungan, 2); ?></span>
-                    </div>
-                    <div class="info-row">
-                        <span>Hasil Akhir (bagi 2)</span> 
-                        <span>/ 2</span>
-                    </div>
-                    <hr style="margin:6px 0; border:0; border-top:2px solid #e2e8f0;">
-                    
-                    <div class="info-row bold" style="color:#059669; font-size:14px;">
-                        <span>NILAI AKHIR</span> 
-                        <span><?php echo number_format($nilai_akhir_fix, 2); ?></span>
-                    </div>
+                    $r = 1; 
+                    if (mysqli_num_rows($result_live_akl) > 0) { 
+                        while ($row = mysqli_fetch_assoc($result_live_akl)) { 
+                            if ($row['status_konfirmasi'] == 'Jadi') {
+                                $cl_row = 'rank-utama';
+                                $badge = "<br><span class='badge-status-live live-utama'>✓ FIX UTAMA</span>";
+                            } elseif ($row['status_konfirmasi'] == 'Tidak Jadi') {
+                                $cl_row = 'rank-cadangan text-muted-drop';
+                                $badge = "<br><span class='badge-status-live live-drop'>BATAL</span>";
+                            } else {
+                                $cl_row = ($r <= $quota) ? 'rank-utama' : 'rank-cadangan';
+                                $badge = ($r <= $quota) ? "<br><span class='badge-status-live live-utama'>UTAMA</span>" : "<br><span class='badge-status-live live-cadangan'>CADANGAN</span>";
+                            }
+                            
+                            $bobot_skl      = $row['nilai_skl'] * 0.7;
+                            $bobot_tka      = $row['nilai_tka'] * 0.3;
+                            $hasil_berkas   = ($bobot_skl + $bobot_tka) / 2; 
+                            $nilai_test     = (float)$row['nilai_test'];    
+                            $total_gabungan = $hasil_berkas + $nilai_test;  
+                            $nilai_akhir_fix = $total_gabungan / 2;         
+                    ?>
+                        <tr class="<?php echo $cl_row; ?>">
+                            <td><b><?php echo $r++; ?></b></td>
+                            <td class="text-left"><b><?php echo htmlspecialchars($row['nama_lengkap']); ?></b><?php echo $badge; ?></td>
+                            <td class="text-left" style="font-size:11px;"><?php echo htmlspecialchars($row['asal_sekolah']); ?></td>
+                            <td>
+                                <div style="position:relative; display:inline-block;">
+                                    <button class="btn-nilai-dropdown" onclick="toggleInfoNilai(this)">
+                                        <?php echo number_format($nilai_akhir_fix, 2); ?> <span>▼</span>
+                                    </button>
+                                    
+                                    <div class="dropdown-content">
+                                        <div style="font-weight:800; color:#4f46e5; margin-bottom:10px; text-align:center; border-bottom:2px solid #f1f5f9; padding-bottom:6px;">
+                                            RINCIAN PENILAIAN
+                                        </div>
+                                        <div class="info-row">
+                                            <span>Sidanira (70%)</span> 
+                                            <span><?php echo number_format($bobot_skl, 2); ?></span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span>TKA (30%)</span> 
+                                            <span><?php echo number_format($bobot_tka, 2); ?></span>
+                                        </div>
+                                        <hr style="margin:6px 0; border:0; border-top:1px dashed #cbd5e1;">
+                                        <div class="info-row bold">
+                                            <span>Hasil Berkas (bagi 2)</span> 
+                                            <span><?php echo number_format($hasil_berkas, 2); ?></span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span>Nilai Uji (Test)</span> 
+                                            <span><?php echo number_format($nilai_test, 2); ?></span>
+                                        </div>
+                                        <hr style="margin:6px 0; border:0; border-top:1px solid #94a3b8;">
+                                        <div class="info-row bold">
+                                            <span>Total (Berkas+Test)</span> 
+                                            <span><?php echo number_format($total_gabungan, 2); ?></span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span>Hasil Akhir (bagi 2)</span> 
+                                            <span>/ 2</span>
+                                        </div>
+                                        <hr style="margin:6px 0; border:0; border-top:2px solid #e2e8f0;">
+                                        <div class="info-row bold" style="color:#059669; font-size:14px;">
+                                            <span>NILAI AKHIR</span> 
+                                            <span><?php echo number_format($nilai_akhir_fix, 2); ?></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php } } else { echo "<tr><td colspan='4'>Belum ada data.</td></tr>"; } ?>
+                    </tbody>
+                </table>
                 </div>
             </div>
-        </td>
-    </tr>
-<?php } } else { echo "<tr><td colspan='4'>Belum ada data.</td></tr>"; } ?>
-</tbody>
-</table>
-</div>
 
             <div class="table-card">
-<div class="table-title" style="background:#0284c7;">MANAJEMEN PERKANTORAN & LAYANAN BISNIS (MPLB)</div>
-<table>
-<thead>
-    <tr>
-        <th style="width:35px;">No</th>
-        <th class="text-left">Nama</th>
-        <th class="text-left">Asal</th>
-        <th>Nilai</th>
-    </tr>
-</thead>
-<?php 
-$r = 1; 
-if (mysqli_num_rows($result_live_mplb) > 0) { 
-    while ($row = mysqli_fetch_assoc($result_live_mplb)) { 
-        // LOGIKA BADGE STATUS
-        if ($row['status_konfirmasi'] == 'Jadi') {
-            $cl_row = 'rank-utama';
-            $badge = "<span class='badge-status-live live-utama'>✓ FIX UTAMA</span>";
-        } elseif ($row['status_konfirmasi'] == 'Tidak Jadi') {
-            $cl_row = 'rank-cadangan text-muted-drop';
-            $badge = "<span class='badge-status-live live-drop'>BATAL</span>";
-        } else {
-            $cl_row = ($r <= $quota) ? 'rank-utama' : 'rank-cadangan';
-            $badge = ($r <= $quota) ? "<span class='badge-status-live live-utama'>UTAMA</span>" : "<span class='badge-status-live live-cadangan'>CADANGAN</span>";
-        }
-        
-        // VARIABEL MATEMATIKA STRUK KASIR (TRANSPARAN 100%)
-        // VARIABEL MATEMATIKA STRUK KASIR (SINKRON DENGAN RUMUS ADMIN)
-        $bobot_skl      = $row['nilai_skl'] * 0.7;
-        $bobot_tka      = $row['nilai_tka'] * 0.3;
-        $hasil_berkas   = ($bobot_skl + $bobot_tka) / 2; // Ini (Berkas / 2)
-        $nilai_test     = (float)$row['nilai_test'];    // Ini Nilai Test murni
-        $total_gabungan = $hasil_berkas + $nilai_test;  // Gabungan
-        $nilai_akhir_fix = $total_gabungan / 2;         // Total Akhir
-?>
-    <tr class="<?php echo $cl_row; ?>">
-        <td><b><?php echo $r++; ?></b></td>
-        <td class="text-left"><b><?php echo htmlspecialchars($row['nama_lengkap']); ?></b><?php echo $badge; ?></td>
-        <td class="text-left" style="font-size:11px;"><?php echo htmlspecialchars($row['asal_sekolah']); ?></td>
-        <td>
-            <div style="position:relative; display:inline-block;">
-                <button class="btn-nilai-dropdown" onclick="toggleInfoNilai(this)">
-                    <?php echo number_format($nilai_akhir_fix, 2); ?> <span>▼</span>
-                </button>
-                
-                <div class="dropdown-content">
-    <div style="font-weight:800; color:#4f46e5; margin-bottom:10px; text-align:center; border-bottom:2px solid #f1f5f9; padding-bottom:6px;">
-        RINCIAN PENILAIAN
-    </div>
-    
-    <div class="info-row">
-        <span>Sidanira (70%)</span> 
-        <span><?php echo number_format($bobot_skl, 2); ?></span>
-    </div>
-    <div class="info-row">
-        <span>TKA (30%)</span> 
-        <span><?php echo number_format($bobot_tka, 2); ?></span>
-    </div>
-    <hr style="margin:6px 0; border:0; border-top:1px dashed #cbd5e1;">
-    
-    <div class="info-row bold">
-        <span>Hasil Berkas (bagi 2)</span> 
-        <span><?php echo number_format($hasil_berkas, 2); ?></span>
-    </div>
-    <div class="info-row">
-        <span>Nilai Uji (Test)</span> 
-        <span><?php echo number_format($nilai_test, 2); ?></span>
-    </div>
-    <hr style="margin:6px 0; border:0; border-top:1px solid #94a3b8;">
-    
-    <div class="info-row bold">
-        <span>Total (Berkas+Test)</span> 
-        <span><?php echo number_format($total_gabungan, 2); ?></span>
-    </div>
-    <div class="info-row">
-        <span>Hasil Akhir (bagi 2)</span> 
-        <span>/ 2</span>
-    </div>
-    <hr style="margin:6px 0; border:0; border-top:2px solid #e2e8f0;">
-    
-    <div class="info-row bold" style="color:#059669; font-size:14px;">
-        <span>NILAI AKHIR</span> 
-        <span><?php echo number_format($nilai_akhir_fix, 2); ?></span>
-    </div>
-</div>
-            </div>
-        </td>
-    </tr>
-<?php } } else { echo "<tr><td colspan='4'>Belum ada data.</td></tr>"; } ?>
-</tbody>
+                <div class="table-title" style="background:#0284c7;">MANAJEMEN PERKANTORAN & LAYANAN BISNIS (MPLB)</div>
+                <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:35px;">No</th>
+                            <th class="text-left">Nama Pendaftar</th>
+                            <th class="text-left">Asal Sekolah</th>
+                            <th>Nilai</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php 
+                    $r = 1; 
+                    if (mysqli_num_rows($result_live_mplb) > 0) { 
+                        while ($row = mysqli_fetch_assoc($result_live_mplb)) { 
+                            if ($row['status_konfirmasi'] == 'Jadi') {
+                                $cl_row = 'rank-utama';
+                                $badge = "<br><span class='badge-status-live live-utama'>✓ FIX UTAMA</span>";
+                            } elseif ($row['status_konfirmasi'] == 'Tidak Jadi') {
+                                $cl_row = 'rank-cadangan text-muted-drop';
+                                $badge = "<br><span class='badge-status-live live-drop'>BATAL</span>";
+                            } else {
+                                $cl_row = ($r <= $quota) ? 'rank-utama' : 'rank-cadangan';
+                                $badge = ($r <= $quota) ? "<br><span class='badge-status-live live-utama'>UTAMA</span>" : "<br><span class='badge-status-live live-cadangan'>CADANGAN</span>";
+                            }
+                            
+                            $bobot_skl      = $row['nilai_skl'] * 0.7;
+                            $bobot_tka      = $row['nilai_tka'] * 0.3;
+                            $hasil_berkas   = ($bobot_skl + $bobot_tka) / 2; 
+                            $nilai_test     = (float)$row['nilai_test'];    
+                            $total_gabungan = $hasil_berkas + $nilai_test;  
+                            $nilai_akhir_fix = $total_gabungan / 2;         
+                    ?>
+                        <tr class="<?php echo $cl_row; ?>">
+                            <td><b><?php echo $r++; ?></b></td>
+                            <td class="text-left"><b><?php echo htmlspecialchars($row['nama_lengkap']); ?></b><?php echo $badge; ?></td>
+                            <td class="text-left" style="font-size:11px;"><?php echo htmlspecialchars($row['asal_sekolah']); ?></td>
+                            <td>
+                                <div style="position:relative; display:inline-block;">
+                                    <button class="btn-nilai-dropdown" onclick="toggleInfoNilai(this)">
+                                        <?php echo number_format($nilai_akhir_fix, 2); ?> <span>▼</span>
+                                    </button>
+                                    
+                                    <div class="dropdown-content">
+                                        <div style="font-weight:800; color:#4f46e5; margin-bottom:10px; text-align:center; border-bottom:2px solid #f1f5f9; padding-bottom:6px;">
+                                            RINCIAN PENILAIAN
+                                        </div>
+                                        <div class="info-row">
+                                            <span>Sidanira (70%)</span> 
+                                            <span><?php echo number_format($bobot_skl, 2); ?></span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span>TKA (30%)</span> 
+                                            <span><?php echo number_format($bobot_tka, 2); ?></span>
+                                        </div>
+                                        <hr style="margin:6px 0; border:0; border-top:1px dashed #cbd5e1;">
+                                        <div class="info-row bold">
+                                            <span>Hasil Berkas (bagi 2)</span> 
+                                            <span><?php echo number_format($hasil_berkas, 2); ?></span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span>Nilai Uji (Test)</span> 
+                                            <span><?php echo number_format($nilai_test, 2); ?></span>
+                                        </div>
+                                        <hr style="margin:6px 0; border:0; border-top:1px solid #94a3b8;">
+                                        <div class="info-row bold">
+                                            <span>Total (Berkas+Test)</span> 
+                                            <span><?php echo number_format($total_gabungan, 2); ?></span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span>Hasil Akhir (bagi 2)</span> 
+                                            <span>/ 2</span>
+                                        </div>
+                                        <hr style="margin:6px 0; border:0; border-top:2px solid #e2e8f0;">
+                                        <div class="info-row bold" style="color:#059669; font-size:14px;">
+                                            <span>NILAI AKHIR</span> 
+                                            <span><?php echo number_format($nilai_akhir_fix, 2); ?></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php } } else { echo "<tr><td colspan='4'>Belum ada data.</td></tr>"; } ?>
+                    </tbody>
                 </table>
+                </div>
             </div>
         </div>
     <?php endif; ?>
 
     <a href="index.php" class="btn-back">← Kembali ke Portal Utama</a>
 </div>
-<script>
-    function toggleInfoNilai(btn) {
-    let dropdown = btn.nextElementSibling;
-    dropdown.style.display = (dropdown.style.display === "block") ? "none" : "block";
-}
 
-// Menutup dropdown jika klik di luar
-window.onclick = function(event) {
-    if (!event.target.matches('button')) {
-        let dropdowns = document.getElementsByClassName("dropdown-content");
-        for (let i = 0; i < dropdowns.length; i++) {
-            dropdowns[i].style.display = "none";
+<script>
+// Logic baru agar interaksi mulus, terutama di HP
+function toggleInfoNilai(btn) {
+    // 1. Cari dulu menu dropdown milik tombol yang diklik
+    let dropdownTarget = btn.nextElementSibling;
+    
+    // 2. Tutup semua dropdown lain yang sedang terbuka
+    let allDropdowns = document.querySelectorAll('.dropdown-content');
+    allDropdowns.forEach(function(drop) {
+        if (drop !== dropdownTarget) {
+            drop.style.display = 'none';
         }
+    });
+
+    // 3. Buka/Tutup dropdown target
+    if (dropdownTarget.style.display === "block") {
+        dropdownTarget.style.display = "none";
+    } else {
+        dropdownTarget.style.display = "block";
     }
 }
+
+// Menutup menu jika user menyentuh/klik area di luar tombol
+document.addEventListener('click', function(event) {
+    let isClickInsideBtn = event.target.closest('.btn-nilai-dropdown');
+    let isClickInsideMenu = event.target.closest('.dropdown-content');
+
+    if (!isClickInsideBtn && !isClickInsideMenu) {
+        let allDropdowns = document.querySelectorAll('.dropdown-content');
+        allDropdowns.forEach(function(drop) {
+            drop.style.display = 'none';
+        });
+    }
+});
 </script>
 </body>
 </html>

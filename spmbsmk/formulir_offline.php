@@ -1,5 +1,7 @@
 <?php
 // Formulir Pendaftaran Offline (Siap Cetak / Print-Ready)
+header("X-Content-Type-Options: nosniff");
+header("X-Frame-Options: SAMEORIGIN");
 session_start();
 if (!isset($_SESSION['login'])) {
     die("<h1>Akses Ditolak</h1><p>Hanya Panitia yang dapat mengakses Formulir Offline. Silakan login ke Dasbor Admin terlebih dahulu.</p>");
@@ -219,8 +221,26 @@ date_default_timezone_set('Asia/Jakarta');
                     <td></td><td></td><td></td><td></td><td></td>
                     <td style="background:#f1f5f9; color:#94a3b8; font-size:10px;">Tidak Ada Tes</td>
                 </tr>
+                <tr style="font-weight:bold;">
+                    <td>7</td><td style="background:#eef2ff;">RATA-RATA RAPOR (SIDANIRA)</td><td style="background:#eef2ff;"></td><td style="background:#eef2ff;"></td><td style="background:#eef2ff;"></td><td style="background:#eef2ff;"></td><td style="background:#eef2ff;"></td>
+                    <td style="background:red; color:white; font-size:10px;">TKA</td>
+                </tr>
+                <tr style="font-weight:bold">
+                    <td>8</td><td style="background:#eef2ff;">RATA-RATA TKA (B. Indo & MTK)</td>
+                    <td style="background:#f1f5f9; color:#94a3b8; font-size:10px;">SIDANIRA</td><td style="background:#f1f5f9; color:#94a3b8; font-size:10px;">SIDANIRA</td><td style="background:#f1f5f9; color:#94a3b8; font-size:10px;">SIDANIRA</td>
+                    <td style="background:#f1f5f9; color:#94a3b8; font-size:10px;">SIDANIRA</td><td style="background:#f1f5f9; color:#94a3b8; font-size:10px;">SIDANIRA</td> <td></td>
+                    
+                </tr>
             </tbody>
         </table>
+        <table class="table-nilai" style="margin-top: -5px;">
+    
+    
+    <tr style="background:white; color:black; font-weight:bold;">
+        <td style="text-align: center; padding: 10px;">NILAI AKHIR (Rata-rata Rapor + Rata-rata TKA) / 2</td>
+        <td style="width: 25%;"></td>
+    </tr>
+</table>
 
         <div class="section-title">C. Kepemilikan Jaminan Finansial Daerah</div>
         <table class="table-isian">

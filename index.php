@@ -314,9 +314,9 @@ date_default_timezone_set('Asia/Jakarta');
             <h2>Membangun Generasi Unggul,<br>Siap Kerja & Berakhlak Mulia</h2>
             <p>Selamat datang di Official Website SMKS Permata Bunda I Jakarta. Kami membuka kesempatan emas bergabung dalam Program Sekolah Gratis Tahun Pelajaran 2026/2027 khusus bagi lulusan SMP/MTs sederajat.</p>
             <div class="cta-group">
-                <a href="spmb/index.php?page=pendaftaran" class="btn-main btn-primary">📝 Daftar Online Sekarang</a>
-                <a href="spmb/formulir_offline.php" target="_blank" class="btn-main btn-secondary">🖨️ Cetak Form Offline</a>
-                <a href="spmb/index.php?page=live_board" class="btn-main btn-secondary" style="color: var(--primary); font-weight: bold;">📊 Live Bursa Seleksi</a>
+                <a href="spmbsmk/index.php?page=pendaftaran" class="btn-main btn-primary">📝 Daftar Online Sekarang</a>
+                <a href="spmbsmk/formulir_offline.php" target="_blank" class="btn-main btn-secondary">🖨️ Cetak Form Offline</a>
+                <a href="spmbsmk/index.php?page=live_board" class="btn-main btn-secondary" style="color: var(--primary); font-weight: bold;">📊 Live Bursa Seleksi</a>
             </div>
         </div>
     </section>

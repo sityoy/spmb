@@ -136,7 +136,7 @@ if (isset($_POST['cek'])) {
     <form action="" method="POST" style="background:#fff; border:1px solid #e2e8f0; padding:20px; border-radius:12px; margin-bottom: 25px;">
         <div class="form-group" style="margin-bottom: 15px;">
             <label style="text-align: center; display: block; font-size: 13.5px; font-weight: 600; margin-bottom: 8px; color: #475569;">Masukkan 10 Digit NISN Calon Siswa</label>
-            <input type="text" name="nisn" inputmode="numeric" maxlength="10" placeholder="Contoh: 0081234567" required style="text-align: center; font-size: 16px; letter-spacing: 2px; padding: 12px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;">
+            <input type="number" name="nisn" inputmode="numeric" pattern="[0-9]*" maxlength="10" placeholder="Contoh: 0081234567" required style="text-align: center; font-size: 16px; letter-spacing: 2px; padding: 12px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;">
         </div>
         <button type="submit" name="cek" class="btn">Periksa Hasil Kelulusan</button>
     </form>

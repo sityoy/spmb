@@ -437,7 +437,7 @@ if (isset($_POST['daftar'])) {
                 </div>
 
                 <div class="form-group">
-                    <label>3. Scan Kartu Keluarga (KK) Asli <span style="color:red;">*</span></label>
+                    <label>3. Scan Kartu Keluarga (KK) Asli - Terbaru (Wajib DKI) <span style="color:red;">*</span></label>
                     <div class="custom-upload-box" id="box_kk">
                         <input type="file" name="file_kk" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_kk', 'box_kk')" required>
                         <span class="upload-icon">📄</span>
@@ -457,7 +457,7 @@ if (isset($_POST['daftar'])) {
                 </div>
 
                 <div class="form-group">
-                    <label>5. Scan KTP Bapak <span style="color:red;">*</span></label>
+                    <label>5. Scan KTP Bapak (Kandung) <span style="color:red;">*</span></label>
                     <div class="custom-upload-box" id="box_ktp_bapak">
                         <input type="file" name="file_ktp_bapak" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_ktp_bapak', 'box_ktp_bapak')" required>
                         <span class="upload-icon">💳</span>
