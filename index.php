@@ -293,7 +293,7 @@ date_default_timezone_set('Asia/Jakarta');
     <nav>
         <div class="nav-container">
             <div class="logo-area">
-                <img src="spmb/logo/logosmkpb.png" alt="Logo SMK">
+                <img src="spmbsmk/logo/logosmkpb.png" alt="Logo SMK">
                 <div class="logo-title">
                     <h1>SMKS PERMATA BUNDA I</h1>
                     <!-- <p>YAYASAN PERMATA BUNDA JAKARTA</p> -->
@@ -303,7 +303,7 @@ date_default_timezone_set('Asia/Jakarta');
                 <a href="#">Beranda</a>
                 <a href="#jurusan">Kompetensi</a>
                 <a href="#alur">Alur PPDB</a>
-                <a href="spmb/index.php" class="btn-spmb-nav">Portal SPMB Online 📝</a>
+                <a href="spmbsmk/index.php" class="btn-spmb-nav">Portal SPMB Online 📝</a>
             </div>
         </div>
     </nav>

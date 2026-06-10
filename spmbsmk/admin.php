@@ -8,10 +8,17 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// --- TAMBAHAN ANTI-HACK ---
+// 1. Mencegah akses langsung ke file ini oleh user yang tidak punya izin di sesi
 if (!isset($_SESSION['login'])) {
     header("Location: login.php");
     exit;
 }
+
+// 2. Mencegah XSS (Cross-Site Scripting) pada parameter URL
+$_GET['tab'] = isset($_GET['tab']) ? preg_replace('/[^a-zA-Z0-9]/', '', $_GET['tab']) : 'akl';
+$_GET['gel'] = isset($_GET['gel']) ? preg_replace('/[^a-zA-Z0-9]/', '', $_GET['gel']) : 'Semua';
+// --- END ANTI-HACK ---
 
 include 'koneksi.php';
 

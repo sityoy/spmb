@@ -6,9 +6,11 @@ include 'koneksi.php';
 // ===================================================================
 date_default_timezone_set('Asia/Jakarta');
 $waktu_sekarang = time();
-
+if (!empty($_POST['website_checker'])) {
+    die("Akses ditolak (Bot detected).");
+}
 // TIMESTAMPS JADWAL GELOMBANG 1 (15 Juni 2026 s.d 30 Juni 2026)
-$buka_g1  = strtotime('2026-06-15 06:00:00');
+$buka_g1  = strtotime('2026-06-10 06:00:00');
 $tutup_g1 = strtotime('2026-06-30 23:59:59');
 
 // TIMESTAMPS JADWAL GELOMBANG 2 (08 Juli 2026 s.d 09 Juli 2026)
@@ -29,12 +31,10 @@ if ($waktu_sekarang >= $buka_g1 && $waktu_sekarang <= $tutup_g1) {
     $gelombang_id     = 2;
 }
 
-
 // ===================================================================
 // 2. REGULASI BATAS KUOTA SISTEM (DINAMIS PER GELOMBANG)
 // ===================================================================
 $max_kuota = ($gelombang_id == 2) ? 11 : 25;
-
 
 // ===================================================================
 // 3. HITUNG KUOTA REAL-TIME DARI DATABASE BERDASARKAN GELOMBANG AKTIF
@@ -73,18 +73,14 @@ if (isset($_POST['daftar'])) {
     if (empty($riwayat_penyakit)) { $riwayat_penyakit = "Tidak Ada"; }
     
     $status_kjp = trim(mysqli_real_escape_string($conn, $_POST['status_kjp']));
-    // Jika status KJP Ya, validasi panjang karakter (misal minimal 5 angka, maks 15)
     if ($status_kjp == 'Ya') {
         $no_rek_kjp = trim(mysqli_real_escape_string($conn, $_POST['no_rek_kjp']));
-        
         if (strlen($no_rek_kjp) < 5 || strlen($no_rek_kjp) > 15) {
             $pesan = "<div class='alert alert-danger'><b>Pendaftaran Gagal!</b><br>Nomor rekening KJP tidak valid (minimal 5 angka, maksimal 15 angka).</div>";
-            // Tambahkan penghentian proses jika tidak valid
         }
     }
 
     $cek_kuota_submit = hitungPendaftarGelombang($jurusan, $gelombang_id, $conn);
-
     $tanggal_lahir_obj = new DateTime($tgl_lahir);
     $hari_ini_obj      = new DateTime(); 
     $hitung_umur       = $hari_ini_obj->diff($tanggal_lahir_obj)->y;
@@ -109,14 +105,35 @@ if (isset($_POST['daftar'])) {
         }
     }
 
-    // KODE BARU (Sudah mengecek NISN, Ijazah, No KK, dan No WhatsApp):
-$cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn = '$nisn' OR no_kk = '$no_kk' OR no_whatsapp = '$wa'";
+    $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn = '$nisn' OR no_kk = '$no_kk' OR no_whatsapp = '$wa'";
     $hasil_cek    = mysqli_query($conn, $cek_duplikat);
+
+    // ANTI-HACK LOKASI (Server Side)
+    $jarak_tidak_valid = false;
+    if (isset($_POST['lat']) && isset($_POST['long'])) {
+        $lat = (float)$_POST['lat'];
+        $long = (float)$_POST['long'];
+        
+        $latSekolah = -6.123456; // GANTI DENGAN LATITUDE SEKOLAH
+        $longSekolah = 106.123456; // GANTI DENGAN LONGITUDE SEKOLAH
+        
+        $theta = $long - $longSekolah;
+        $dist = sin(deg2rad($lat)) * sin(deg2rad($latSekolah)) +  cos(deg2rad($lat)) * cos(deg2rad($latSekolah)) * cos(deg2rad($theta));
+        $dist = acos($dist);
+        $dist = rad2deg($dist);
+        $jarak_meter = $dist * 60 * 1.1515 * 1.609344 * 1000;
+
+        if ($jarak_meter > 100) { $jarak_tidak_valid = true; }
+    } else {
+        $jarak_tidak_valid = true; 
+    }
 
     if ($file_terlalu_besar) {
         $pesan = "<div class='alert alert-danger'><b>Pendaftaran Gagal!</b><br>Berkas melebihi batas maksimal 3MB.</div>";
     } elseif ($ekstensi_ilegal) {
         $pesan = "<div class='alert alert-danger'><b>Format Berkas Ilegal!</b><br>Sistem hanya menerima file gambar atau dokumen (.pdf).</div>";
+    } elseif ($jarak_tidak_valid) {
+        $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Lokasi Anda tidak valid atau berada di luar area sekolah. Silakan lakukan Verifikasi Lokasi.</div>";
     } elseif (mysqli_num_rows($hasil_cek) > 0) {
         $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Maaf, NISN, Nomor Seri Ijazah, Nomor KK, atau Nomor WhatsApp Anda sudah pernah terdaftar di sistem kami.</div>";
     } elseif ($cek_kuota_submit >= $max_kuota) {
@@ -169,7 +186,7 @@ $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn 
             move_uploaded_file($_FILES['file_sptjm']['tmp_name'], $folder_tujuan . $nama_sptjm) && $upload_kjp_status) {
             
             $no_pendaftaran = "SPMB-SMKPB1-" . date('Y') . "-" . rand(1000, 9999);
-
+            
             $query = "INSERT INTO pendaftar (no_pendaftaran, nama_lengkap, tempat_lahir, tanggal_lahir, nisn, no_ijazah, asal_sekolah, riwayat_penyakit, no_whatsapp, pilihan_jurusan, nilai_skl, nilai_tka, nilai_test, file_ijazah, file_tka, file_kk, file_akte, no_kk, status_konfirmasi, file_ktp_bapak, file_ktp_ibu, file_sptjm, status_kjp, no_rek_kjp, file_tabungan_kjp, gelombang) 
                       VALUES ('$no_pendaftaran', '$nama', '$tmpl_lahir', '$tgl_lahir', '$nisn', '$no_ijazah', '$asal', '$riwayat_penyakit', '$wa', '$jurusan', '$skl', '$tka', '0.00', '$nama_ijazah', '$nama_tka', '$nama_kk', '$nama_akte', '$no_kk', 'Belum', '$nama_ktp_bapak', '$nama_ktp_ibu', '$nama_sptjm', '$status_kjp', '$no_rek_kjp', '$nama_tabungan_kjp', '$gelombang_id')";
 
@@ -187,26 +204,28 @@ $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn 
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SPMB Portal - SMKS PERMATA BUNDA I</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f1f5f9; color: #1e293b; margin: 0; padding: 20px 0; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f1f5f9; color: #1e293b; margin: 0; padding: 20px 10px; }
         .container { max-width: 800px; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); padding: 35px; margin: 0 auto; box-sizing: border-box; }
         
         .header { text-align: center; margin-bottom: 30px; }
         .header h2 { margin: 10px 0 5px 0; font-weight: 800; color: #0f172a; font-size: 24px; letter-spacing: -0.5px; }
         .header h4 { margin: 0 0 10px 0; color: #475569; font-weight: 600; font-size: 16px; }
-        .tag-school { background: #e0e7ff; color: #4f46e5; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; }
-        .tag-gelombang { background: #fef3c7; color: #d97706; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; margin-left: 5px; }
+        .tag-school, .tag-gelombang { background: #e0e7ff; color: #4f46e5; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; margin-bottom: 5px;}
+        .tag-gelombang { background: #fef3c7; color: #d97706; margin-left: 5px; }
 
         .main-nav { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; flex-wrap: wrap; }
-        .nav-link { padding: 10px 22px; font-weight: 600; color: #64748b; text-decoration: none; border-radius: 10px; transition: all 0.3s ease; font-size: 14px; border: 1px solid #e2e8f0; display: inline-flex; align-items: center; gap: 8px; }
+        .nav-link { padding: 10px 22px; font-weight: 600; color: #64748b; text-decoration: none; border-radius: 10px; transition: all 0.3s ease; font-size: 14px; border: 1px solid #e2e8f0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
         .nav-link:hover { background: #f8fafc; color: #4f46e5; border-color: #cbd5e1; }
 
         .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
-        @media (max-width: 640px) { .grid-form { grid-template-columns: 1fr; gap: 15px; } }
+        .full-width { grid-column: span 2; }
+        .input-group-badge { display: grid; grid-template-columns: 3fr 1fr; gap: 10px; }
+        .input-group-badge-date { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
         
         .form-group label { display: block; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px; }
         .form-group input, .form-group select { width: 100%; padding: 14px 16px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-family: inherit; font-size: 14px; transition: all 0.2s ease; box-sizing: border-box; background: #fff; color: #1e293b; outline: none; }
@@ -240,6 +259,32 @@ $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn 
         .status-invalid { background: #fef2f2; border-color: #ef4444; color: #b91c1c; }
 
         .kjp-wrapper-box { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 20px; border-radius: 12px; margin-top: 15px; display: none; }
+        
+        #info-lokasi { font-size: 12px; margin-top: 10px; font-weight: bold; text-align: center; padding: 8px; border-radius: 6px;}
+
+        /* =================================================================
+           RESPONSIVE MOBILE (UI/UX KHUSUS HP)
+           ================================================================= */
+        @media (max-width: 640px) { 
+            body { padding: 10px; }
+            .container { padding: 20px 15px; border-radius: 12px; }
+            .header h2 { font-size: 20px; }
+            .header h4 { font-size: 14px; }
+            .tag-school, .tag-gelombang { display: block; margin: 5px auto; width: max-content; margin-left: auto; margin-right: auto;}
+            
+            .main-nav { flex-direction: column; gap: 10px; padding-bottom: 15px; }
+            .nav-link { width: 100%; box-sizing: border-box; }
+            
+            .grid-form { grid-template-columns: 1fr; gap: 15px; } 
+            .full-width { grid-column: span 1; }
+            
+            /* Mengubah Input Berdampingan menjadi Atas-Bawah di HP */
+            .input-group-badge, .input-group-badge-date { grid-template-columns: 1fr; gap: 8px; }
+            
+            /* Mencegah layar iPhone otomatis Zoom saat mengetik */
+            .form-group input, .form-group select { font-size: 16px; padding: 12px 14px; }
+            .status-badge-neutral { padding: 12px 0; }
+        }
     </style>
 </head>
 <body>
@@ -254,7 +299,7 @@ $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn 
 
     <div class="main-nav">
         <a href="live_board.php" class="nav-link">📊 Live Board Sisa Kuota</a>
-        <a href="pengumuman.php" class="nav-link">🔍 Cek Hasil Kelulusan Mandiri</a>
+        <a href="pengumuman.php" class="nav-link">🔍 Cek Hasil Kelulusan</a>
     </div>
 
     <?php if ($pesan != "") echo $pesan; ?>
@@ -263,24 +308,27 @@ $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn 
         <div class="time-alert-box">
             ⚠️ Mohon Maaf, Sistem SPMB Online Saat Ini Sedang Ditutup.<br>
             <span style="font-size:13px; font-weight:500; color:#9a3412; display:block; margin-top:8px;">
-                <b>Gelombang 1:</b> 15 Juni 2026 - 30 Juni 2026<br>
-                <b>Gelombang 2:</b> 08 Juli 2026 - 09 Juli 2026
+                <b>Gelombang 1:</b> 15 Juni 2026 (06:00) - 30 Juni 2026 (23.59) <br>
+                <b>Gelombang 2:</b> 08 Juli 2026 (06.00) - 09 Juli 2026 (23.59)
             </span>
         </div>
     <?php else: ?>
         <form action="" method="POST" enctype="multipart/form-data">
+            <div style="display:none;">
+                <input type="text" name="website_checker" value="">
+            </div>
             
             <div class="section-title">👤 Identitas Pribadi Calon Siswa</div>
             <div class="grid-form" style="margin-top:15px;">
-                <div class="form-group" style="grid-column: span 2;">
+                <div class="form-group full-width">
                     <label>Nama Lengkap (Sesuai Ijazah)</label>
                     <input type="text" name="nama_lengkap" class="input-kapital" placeholder="CONTOH: BUDI SETIAWAN" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
-                <div class="form-group" style="grid-column: span 2;">
+                <div class="form-group full-width">
                     <label>Nomor Kartu Keluarga (KK DKI Jakarta)</label>
-                    <div style="display: grid; grid-template-columns: 3fr 1fr; gap: 10px;">
-                        <input type="text" id="no_kk" name="no_kk" maxlength="16" placeholder="Wajib 16 Digit & Diawali Angka 31" pattern="[0-9]{16}" oninput="jalankanValidasiSistemKomplit()" required>
+                    <div class="input-group-badge">
+                        <input type="tel" id="no_kk" name="no_kk" maxlength="16" placeholder="Wajib 16 Digit & Diawali Angka 31" pattern="[0-9]{16}" oninput="this.value = this.value.replace(/[^0-9]/g, ''); jalankanValidasiSistemKomplit()" required>
                         <span id="box_status_kk" class="status-badge-neutral">Belum Valid</span>
                     </div>
                 </div>
@@ -292,7 +340,7 @@ $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn 
                 
                 <div class="form-group">
                     <label>Tanggal Lahir & Status Batas Usia</label>
-                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
+                    <div class="input-group-badge-date">
                         <input type="date" id="tanggal_lahir" name="tanggal_lahir" onchange="jalankanValidasiSistemKomplit()" required>
                         <span id="box_status_umur" class="status-badge-neutral">- Thn</span>
                     </div>
@@ -300,7 +348,7 @@ $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn 
 
                 <div class="form-group">
                     <label>NISN (10 Digit Wajib)</label>
-                    <input type="text" 
+                    <input type="tel" 
                         name="nisn" 
                         id="nisn"
                         maxlength="10" 
@@ -308,7 +356,7 @@ $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn 
                         pattern="[0-9]{10}" 
                         oninput="this.value = this.value.replace(/[^0-9]/g, ''); jalankanValidasiNisn(this)" 
                         required>
-                    <span id="box_status_nisn" class="status-badge-neutral">Belum Valid</span>
+                    <span id="box_status_nisn" class="status-badge-neutral" style="margin-top: 8px;">Belum Valid</span>
                 </div>
 
                 <div class="form-group">
@@ -322,11 +370,11 @@ $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn 
                 </div>
 
                 <div class="form-group">
-                    <label>No. HP (WhatsApp) Aktif Orang Tua / Siswa</label>
-                    <input type="tel" name="no_whatsapp" placeholder="08xxxxxxxxxx" required>
+                    <label>No. HP (WhatsApp) Aktif</label>
+                    <input type="tel" name="no_whatsapp" placeholder="08xxxxxxxxxx" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                 </div>
 
-                <div class="form-group" style="grid-column: span 2;">
+                <div class="form-group full-width">
                     <label>Riwayat Penyakit Khusus (Jika Ada)</label>
                     <input type="text" name="riwayat_penyakit" placeholder="Tulis 'Tidak Ada' jika sehat walafiat">
                 </div>
@@ -334,18 +382,18 @@ $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn 
 
             <div class="section-title">🎓 Kompetensi Keahlian (Jurusan) & Nilai</div>
             <div class="grid-form" style="margin-top:15px;">
-                <div class="form-group" style="grid-column: span 2;">
-                    <label>Pilihan Kompetensi Keahlian (Jurusan) & Sisa Kuota <?php echo $gelombang_aktif; ?></label>
+                <div class="form-group full-width">
+                    <label>Pilihan Kompetensi Keahlian (Jurusan)</label>
                     <select name="pilihan_jurusan" required>
                         <option value="">-- Silahkan Pilih Jurusan --</option>
                         
                         <option value="Akuntansi dan Keuangan Lembaga" <?php if($total_akl >= $max_kuota) echo 'disabled'; ?>>
-                            Akuntansi dan Keuangan Lembaga (AKL) - Kuota Terisi: <?php echo $total_akl . "/" . $max_kuota; ?> 
+                            Akuntansi dan Keuangan Lembaga (AKL) - Kuota Terisi: <?php echo $total_akl; ?>/<?php echo $max_kuota; ?> 
                             <?php if($total_akl >= $max_kuota) echo '(PENUH)'; ?>
                         </option>
                         
                         <option value="Manajemen Perkantoran dan Layanan Bisnis" <?php if($total_mplb >= $max_kuota) echo 'disabled'; ?>>
-                            Manajemen Perkantoran dan Layanan Bisnis (MPLB) - Kuota Terisi: <?php echo $total_mplb . "/" . $max_kuota; ?>
+                            Manajamen Perkantoran dan Layanan Bisnis (MPLB) - Kuota Terisi: <?php echo $total_mplb; ?>/<?php echo $max_kuota; ?>
                             <?php if($total_mplb >= $max_kuota) echo '(PENUH)'; ?>
                         </option>
                     </select>
@@ -359,14 +407,14 @@ $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn 
                 </div>
 
                 <div class="form-group">
-                    <label>Nilai Tes Kompetensi Akademik / TKA</label>
+                    <label>Nilai Tes Akademik / TKA</label>
                     <input type="number" name="nilai_tka" step="0.01" min="0" max="100" placeholder="0.00" 
                         oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0; if(this.value.includes('.')){ let p=this.value.split('.'); if(p[1].length>2) this.value=p[0]+'.'+p[1].substring(0,2); }" required>
-                    <small style="color:#64748b; font-size:11px; margin-top:4px; display:block;">*Gunakan tanda <b>titik (.)</b> untuk desimal. Contoh: <b>85.50</b></small>
+                    <small style="color:#64748b; font-size:11px; margin-top:4px; display:block;">*Gunakan tanda <b>titik (.)</b> untuk desimal. Contoh: <b>80.99</b></small>
                 </div>
             </div>
 
-            <div class="section-title">📁 Lampiran Dokumen Berkas Pendukung (Maks 3MB per File)</div>
+            <div class="section-title">📁 Lampiran Dokumen (Maks 3MB)</div>
             <div class="grid-form" style="margin-top:15px;">
                 <div class="form-group">
                     <label>1. Scan Ijazah / SK Sidanira Asli <span style="color:red;">*</span></label>
@@ -409,7 +457,7 @@ $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn 
                 </div>
 
                 <div class="form-group">
-                    <label>5. Scan KTP Orang Tua (Bapak) <span style="color:red;">*</span></label>
+                    <label>5. Scan KTP Bapak <span style="color:red;">*</span></label>
                     <div class="custom-upload-box" id="box_ktp_bapak">
                         <input type="file" name="file_ktp_bapak" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_ktp_bapak', 'box_ktp_bapak')" required>
                         <span class="upload-icon">💳</span>
@@ -419,7 +467,7 @@ $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn 
                 </div>
 
                 <div class="form-group">
-                    <label>6. Scan KTP Orang Tua (Ibu) <span style="color:red;">*</span></label>
+                    <label>6. Scan KTP Ibu <span style="color:red;">*</span></label>
                     <div class="custom-upload-box" id="box_ktp_ibu">
                         <input type="file" name="file_ktp_ibu" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_ktp_ibu', 'box_ktp_ibu')" required>
                         <span class="upload-icon">💳</span>
@@ -428,8 +476,8 @@ $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn 
                     </div>
                 </div>
 
-                <div class="form-group" style="grid-column: span 2;">
-                    <label>7. Scan Surat Pertanggungjawaban Mutlak (SPTJM) Bermaterai 10.000 <span style="color:red;">*</span></label>
+                <div class="form-group full-width">
+                    <label>7. Scan Surat Pertanggungjawaban Mutlak (SPTJM) <span style="color:red;">*</span></label>
                     <div class="custom-upload-box" id="box_sptjm">
                         <input type="file" name="file_sptjm" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_sptjm', 'box_sptjm')" required>
                         <span class="upload-icon">📜</span>
@@ -452,43 +500,107 @@ $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn 
                 <div id="wrapper_kjp_kondisional" class="kjp-wrapper-box">
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label>Nomor Rekening Buku Tabungan KJP</label>
-                        <input type="text" 
+                        <input type="tel" 
                             name="no_rek_kjp" 
                             maxlength="15" 
                             id="no_rek_kjp_field" 
-                            placeholder="Masukkan nomor rekening KJP (Maks 15 angka)" 
+                            placeholder="Maksimal 15 angka" 
                             oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label>8. Scan Buku Tabungan KJP Halaman Depan <span style="color:red;">*</span></label>
+                        <label>8. Scan Buku Tabungan KJP <span style="color:red;">*</span></label>
                         <div class="custom-upload-box" id="box_tabungan_kjp">
                             <input type="file" name="file_tabungan_kjp" id="file_tabungan_kjp_field" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_tabungan_kjp', 'box_tabungan_kjp')">
                             <span class="upload-icon">💳</span>
-                            <span class="upload-text" id="txt_tabungan_kjp">Ketuk / Seret Berkas Buku Tabungan KJP Disini</span>
+                            <span class="upload-text" id="txt_tabungan_kjp">Ketuk / Seret Tabungan KJP</span>
                             <span class="upload-hint">Format: JPG, PNG, PDF</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <button type="submit" name="daftar" id="btn_submit_form" class="btn">Kirim & Proses Formulir Pendaftaran</button>
+            <div class="section-title">📍 Keamanan Sistem Terpadu</div>
+            <div class="form-group full-width" style="margin-top: 15px; border: 1.5px solid #cbd5e1; padding: 20px; border-radius: 12px; background: #f8fafc;">
+                <label style="text-align: center; font-size: 14px;">Verifikasi Lokasi Sekolah</label>
+                <button type="button" class="btn" style="background:#64748b; box-shadow: none; margin-top:5px;" onclick="cekLokasi()">📍 Verifikasi Lokasi Saya</button>
+                <div id="info-lokasi" class="status-badge-neutral">Belum diverifikasi. Tekan tombol di atas.</div>
+                <input type="hidden" name="lat" id="lat">
+                <input type="hidden" name="long" id="long">
+            </div>
+
+            <button type="submit" name="daftar" id="btn_submit_form" class="btn" disabled>
+                Kirim & Proses Formulir Pendaftaran
+            </button>
         </form>
     <?php endif; ?>
 </div>
 
 <script>
+// Variabel Juri untuk memastikan SEMUA syarat terpenuhi sebelum submit
+let isLokasiValid = false;
+let isNisnValid = false;
+let isUmurValid = false;
+let isKkValid = false;
+
+function cekSemuaValidasi() {
+    const btnSubmit = document.getElementById("btn_submit_form");
+    if (isLokasiValid && isNisnValid && isUmurValid && isKkValid) {
+        btnSubmit.disabled = false; 
+    } else {
+        btnSubmit.disabled = true;  
+    }
+}
+
+function cekLokasi() {
+    document.getElementById('info-lokasi').innerHTML = "⏳ Sedang mencari lokasi...";
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            const latSekolah = -6.123456; // GANTI DENGAN LATITUDE SEKOLAH
+            const longSekolah = 106.123456; // GANTI DENGAN LONGITUDE SEKOLAH
+            
+            const userLat = position.coords.latitude;
+            const userLong = position.coords.longitude;
+            
+            const R = 6371000; 
+            const dLat = (userLat - latSekolah) * Math.PI / 180;
+            const dLong = (userLong - longSekolah) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(latSekolah * Math.PI / 180) * Math.cos(userLat * Math.PI / 180) * Math.sin(dLong/2) * Math.sin(dLong/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const jarak = R * c;
+
+            if (jarak <= 100) {
+                document.getElementById('info-lokasi').innerHTML = "✅ Lokasi Valid (Jarak: " + jarak.toFixed(2) + "m)";
+                document.getElementById('info-lokasi').className = "status-valid";
+                document.getElementById('lat').value = userLat;
+                document.getElementById('long').value = userLong;
+                isLokasiValid = true; 
+                cekSemuaValidasi();   
+            } else {
+                alert("Pendaftaran Gagal!\nAnda berada di luar radius 100m dari sekolah. Jarak Anda: " + Math.round(jarak) + " meter.");
+                document.getElementById('info-lokasi').innerHTML = "❌ Lokasi Terlalu Jauh";
+                document.getElementById('info-lokasi').className = "status-invalid";
+                isLokasiValid = false;
+                cekSemuaValidasi();
+            }
+        }, function(error) {
+            alert("Mohon izinkan/aktifkan GPS Lokasi Anda di Browser.");
+            document.getElementById('info-lokasi').innerHTML = "❌ Akses GPS Ditolak";
+        });
+    }
+}
+
 function perbaruiPratinjauBerkasSistem(inputElement, textTargetId, boxTargetId) {
     const textTarget = document.getElementById(textTargetId);
     const boxTarget = document.getElementById(boxTargetId);
     
     if (inputElement.files && inputElement.files[0]) {
         const namaFile = inputElement.files[0].name;
-        textTarget.innerText = "✓ Berkas Berhasil Terpilih";
+        textTarget.innerText = "✓ Berkas Terpilih";
         boxTarget.querySelector('.upload-hint').innerText = namaFile;
         boxTarget.classList.add('file-loaded');
     } else {
-        textTarget.innerText = "Ketuk / Seret Berkas Kesini";
+        textTarget.innerText = "Ketuk / Seret Berkas";
         boxTarget.querySelector('.upload-hint').innerText = "Format: JPG, PNG, PDF";
         boxTarget.classList.remove('file-loaded');
     }
@@ -509,27 +621,24 @@ function toggleKjpFormSistem(nilai) {
         fileField.required = false;
         noRekField.value = "";
         fileField.value = "";
-        document.getElementById('txt_tabungan_kjp').innerText = "Ketuk / Seret Berkas Buku Tabungan KJP Disini";
+        document.getElementById('txt_tabungan_kjp').innerText = "Ketuk / Seret Tabungan KJP";
         document.getElementById('box_tabungan_kjp').querySelector('.upload-hint').innerText = "Format: JPG, PNG, PDF";
         document.getElementById('box_tabungan_kjp').classList.remove('file-loaded');
     }
 }
+
 function jalankanValidasiNisn(input) {
     const badgeNisn = document.getElementById("box_status_nisn");
-    const btnSubmit = document.getElementById("btn_submit_form");
-    
-    // Validasi: Harus tepat 10 karakter
     if (input.value.length === 10) {
-        badgeNisn.innerText = "NISN Valid";
-        badgeNisn.className = "status-badge-neutral status-valid";
-        // Aktifkan tombol daftar jika valid
-        btnSubmit.disabled = false;
+        badgeNisn.innerText = "✅ NISN Valid";
+        badgeNisn.className = "status-valid";
+        isNisnValid = true; 
     } else {
-        badgeNisn.innerText = "Wajib 10 Angka";
-        badgeNisn.className = "status-badge-neutral status-invalid";
-        // Nonaktifkan tombol daftar jika belum valid
-        btnSubmit.disabled = true;
+        badgeNisn.innerText = "❌ Wajib 10 Angka";
+        badgeNisn.className = "status-invalid";
+        isNisnValid = false;
     }
+    cekSemuaValidasi(); 
 }
 
 function jalankanValidasiSistemKomplit() {
@@ -537,71 +646,52 @@ function jalankanValidasiSistemKomplit() {
     const badgeUmur = document.getElementById("box_status_umur");
     const kkInput = document.getElementById("no_kk").value;
     const badgeKk = document.getElementById("box_status_kk");
-    const btnSubmit = document.getElementById("btn_submit_form");
     
-    let umurValid = false;
-    let kkValid = false;
-
     if (tglLahirInput) {
         const lahir = new Date(tglLahirInput);
         const hariIni = new Date();
         let umur = hariIni.getFullYear() - lahir.getFullYear();
         const m = hariIni.getMonth() - lahir.getMonth();
         if (m < 0 || (m === 0 && hariIni.getDate() < lahir.getDate())) { umur--; }
-        badgeUmur.innerText = umur + " Tahun";
+        
         if (umur >= 13 && umur <= 21) {
-            badgeUmur.className = "status-badge-neutral status-valid";
-            umurValid = true;
+            badgeUmur.innerText = "✅ " + umur + " Thn";
+            badgeUmur.className = "status-valid";
+            isUmurValid = true; 
         } else {
-            badgeUmur.className = "status-badge-neutral status-invalid";
-            umurValid = false;
+            badgeUmur.innerText = "❌ " + umur + " Thn (Tidak Lolos)";
+            badgeUmur.className = "status-invalid";
+            isUmurValid = false;
         }
     }
 
     if (kkInput) {
         if (kkInput.length === 16 && kkInput.startsWith("31")) {
-            badgeKk.innerText = "KK DKI Valid";
-            badgeKk.className = "status-badge-neutral status-valid";
-            kkValid = true;
+            badgeKk.innerText = "✅ KK DKI Valid";
+            badgeKk.className = "status-valid";
+            isKkValid = true; 
         } else {
-            badgeKk.innerText = "Bukan KK DKI";
-            badgeKk.className = "status-badge-neutral status-invalid";
-            kkValid = false;
+            badgeKk.innerText = "❌ Bukan KK DKI / < 16 Digit";
+            badgeKk.className = "status-invalid";
+            isKkValid = false;
         }
-    } else {
-        badgeKk.innerText = "Belum Valid";
-        badgeKk.className = "status-badge-neutral";
     }
 
-    if (tglLahirInput && kkInput) {
-        if (umurValid && kkValid) { btnSubmit.disabled = false; } 
-        else { btnSubmit.disabled = true; }
-    }
+    cekSemuaValidasi(); 
 }
 
-// ==========================================
-// FITUR AUTO-SAVE FORM (ANTI HILANG SAAT REFRESH)
-// ==========================================
+// Auto-Save Form (Sangat Berguna di HP)
 document.addEventListener("DOMContentLoaded", function() {
-    // Pilih semua input teks, nomor, telp, date, dan dropdown (kecuali input file)
     const formElements = document.querySelectorAll("input:not([type='file']), select");
-    
-    // 1. Saat halaman dimuat, isi kembali kolom dengan data yang tersimpan
     formElements.forEach(el => {
         if (el.name && sessionStorage.getItem(el.name)) {
             el.value = sessionStorage.getItem(el.name);
-            // Trigger validasi setelah nilai diisi otomatis
             if(el.name === "tanggal_lahir" || el.name === "no_kk") jalankanValidasiSistemKomplit();
+            if(el.name === "nisn") jalankanValidasiNisn(el);
             if(el.name === "status_kjp") toggleKjpFormSistem(el.value);
         }
-        
-        // 2. Simpan seketika setiap kali user mengetik/memilih
-        el.addEventListener("input", function() {
-            sessionStorage.setItem(el.name, el.value);
-        });
-        el.addEventListener("change", function() {
-            sessionStorage.setItem(el.name, el.value);
-        });
+        el.addEventListener("input", function() { sessionStorage.setItem(el.name, el.value); });
+        el.addEventListener("change", function() { sessionStorage.setItem(el.name, el.value); });
     });
 });
 </script>
