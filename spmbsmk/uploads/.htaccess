@@ -1,0 +1,8 @@
+# Menolak akses pengunjung untuk melihat daftar list file di dalam folder ini
+Options -Indexes
+
+# Mencegah eksekusi script PHP palsu yang disisipkan hacker berkedok gambar
+<FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|jsp|asp|sh|cgi)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
