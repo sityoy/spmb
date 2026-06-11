@@ -14,6 +14,7 @@ date_default_timezone_set('Asia/Jakarta');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Formulir Offline SPMB - SMKS PERMATA BUNDA I</title>
+    <link rel="icon" type="image/x-icon" href="logo/logosmkpb.png">
     <style>
         body { font-family: 'Times New Roman', Times, serif; font-size: 13px; line-height: 1.3; color: #000; background: #fff; margin: 0; padding: 10px; }
         .print-container { max-width: 750px; margin: 0 auto; padding: 5px; }

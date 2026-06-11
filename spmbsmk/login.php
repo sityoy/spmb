@@ -43,6 +43,7 @@ if (isset($_POST['masuk'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login Pengaman SPMB</title>
+    <link rel="icon" type="image/x-icon" href="logo/logosmkpb.png">
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #f3f4f6; display: flex; height: 100vh; align-items: center; justify-content: center; margin: 0; padding: 15px; box-sizing: border-box; }
         .card { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%; max-width: 360px; }
@@ -74,7 +75,9 @@ if (isset($_POST['masuk'])) {
             <input type="password" name="password" required placeholder="Masukkan password">
         </div>
         <button type="submit" name="masuk" class="btn">Masuk Ke Sistem</button>
+        
     </form>
+    <a href="../index.php"><button type="submit" name="index" class="btn">Kembali</button></a>
 </div>
 
 </body>

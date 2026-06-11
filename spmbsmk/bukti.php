@@ -1,11 +1,6 @@
 <?php
+session_start();
 include 'koneksi.php';
-
-// Tambahan Keamanan: Cek apakah user yang login atau admin
-// Jika tidak, bisa diminta memasukkan NISN sebagai verifikasi tambahan
-if (!isset($_SESSION['login']) && !isset($_POST['verifikasi_nisn'])) {
-    // Anda bisa membuat form kecil untuk verifikasi NISN sebelum bukti muncul
-}
 
 if (!isset($_GET['no_pendaftaran'])) {
     header("Location: index.php");
@@ -13,16 +8,53 @@ if (!isset($_GET['no_pendaftaran'])) {
 }
 
 $no_daftar = trim($_GET['no_pendaftaran']); 
-
-// Pencarian data menggunakan TRIM dan Proteksi SQL Injection
 $no_daftar_clean = mysqli_real_escape_string($conn, $no_daftar);
+
+// Ambil data dari database dulu
 $query = "SELECT * FROM pendaftar WHERE TRIM(no_pendaftaran) = TRIM('$no_daftar_clean')";
 $result = mysqli_query($conn, $query);
 $data = mysqli_fetch_assoc($result);
 
 if (!$data) { 
-    die("Data dengan nomor pendaftaran <b>" . htmlspecialchars($no_daftar) . "</b> tidak ditemukan di database. Pastikan format nomor benar."); 
+    die("Data dengan nomor pendaftaran <b>" . htmlspecialchars($no_daftar) . "</b> tidak ditemukan."); 
 }
+
+// ==========================================
+// ANTI-HACK: PROTEKSI KEBOCORAN DATA PRIBADI
+// ==========================================
+// Jika yang akses BUKAN admin, dan BUKAN dari form verifikasi, minta NISN!
+if (!isset($_SESSION['login'])) {
+    // Jika user memasukkan NISN dari form verifikasi di bawah
+    if (isset($_POST['verifikasi_nisn'])) {
+        if ($_POST['verifikasi_nisn'] !== $data['nisn']) {
+            die("<div style='text-align:center; margin-top:50px; font-family:sans-serif;'>
+                 <h3 style='color:red;'>Akses Ditolak!</h3>
+                 <p>NISN yang Anda masukkan salah.</p>
+                 <a href='bukti.php?no_pendaftaran=".urlencode($no_daftar)."'>Coba Lagi</a>
+                 </div>");
+        }
+        // Jika NISN benar, buat session sementara agar bisa print tanpa bolak-balik isi NISN
+        $_SESSION['izin_akses_bukti_' . $no_daftar_clean] = true;
+    } 
+    // Jika belum punya izin dan belum mengisi form NISN
+    elseif (!isset($_SESSION['izin_akses_bukti_' . $no_daftar_clean])) {
+        // Tampilkan Form Verifikasi lalu hentikan eksekusi kode di bawahnya (DIE)
+        die("
+        <div style='font-family: sans-serif; max-width: 400px; margin: 50px auto; text-align: center; background: #f8fafc; padding: 30px; border-radius: 12px; border: 1px solid #cbd5e1;'>
+            <h3 style='color: #4f46e5; margin-top:0;'>🔒 Keamanan Data Privasi</h3>
+            <p style='font-size: 14px; color: #475569;'>Untuk melihat dan mencetak bukti pendaftaran ini, silakan masukkan <b>NISN</b> pendaftar sebagai verifikasi.</p>
+            <form method='POST'>
+                <input type='text' name='verifikasi_nisn' placeholder='Masukkan 10 Digit NISN' required style='width: 100%; padding: 12px; box-sizing: border-box; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 8px; text-align: center; letter-spacing: 2px; font-size: 16px;'>
+                <button type='submit' style='width: 100%; padding: 12px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;'>Buka Bukti Pendaftaran</button>
+            </form>
+        </div>
+        ");
+    }
+}
+// ==========================================
+// END ANTI-HACK
+// ==========================================
+
 
 $jrs = ($data['pilihan_jurusan'] == "Akuntansi dan Keuangan Lembaga") ? "Akuntansi dan Keuangan Lembaga (AKL)" : "Manajemen Perkantoran dan Layanan Bisnis (MPLB)";
 
@@ -81,21 +113,22 @@ function tgl_indo($tanggal) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bukti_Pendaftaran_<?php echo htmlspecialchars($data['no_pendaftaran'], ENT_QUOTES, 'UTF-8'); ?></title>
+    <link rel="icon" type="image/x-icon" href="logo/logosmkpb.png">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
         
-        body { font-family: 'Plus Jakarta Sans', Arial, sans-serif; color: #1f2937; background: #f3f4f6; margin: 0; padding: 20px; }
-        .card-bukti { max-width: 700px; background: #fff; margin: 20px auto; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-top: 8px solid #4f46e5; }
+        body { font-family: 'Plus Jakarta Sans', Arial, sans-serif; color: #1f2937; background: #f3f4f6; margin: 0; padding: 20px 10px; }
+        .card-bukti { max-width: 700px; background: #fff; margin: 0 auto; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-top: 8px solid #4f46e5; box-sizing: border-box; }
         .kop { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 20px; margin-bottom: 25px; }
+        .kop img { max-width: 100%; height: auto; } /* Mencegah logo kebesaran di HP */
         .kop h2 { margin: 0; color: #4f46e5; font-size: 22px; font-weight: 800; }
         .kop p { margin: 6px 0 0 0; font-size: 14px; color: #4b5563; }
-        .no-reg { text-align: center; font-size: 24px; font-weight: 800; color: #0f172a; margin: 15px 0 25px 0; letter-spacing: 1.5px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0; }
+        .no-reg { text-align: center; font-size: 24px; font-weight: 800; color: #0f172a; margin: 15px 0 25px 0; letter-spacing: 1.5px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0; word-break: break-all; }
         
         .main-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         .main-table td { padding: 10px; border-bottom: 1px solid #f1f5f9; font-size: 14px; vertical-align: top; }
         .main-table td:first-child { font-weight: 600; color: #475569; width: 35%; }
         
-        /* Area Desain Nilai Transparan */
         .box-nilai { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; line-height: 1.6; }
         .tabel-rincian { width: 100%; border-collapse: collapse; font-size: 13px; }
         .tabel-rincian td { padding: 5px 0; border: none; }
@@ -106,22 +139,53 @@ function tgl_indo($tanggal) {
         .badge-tunggu { background: #fef3c7; color: #b45309; padding: 6px 10px; border-radius: 6px; font-size: 12.5px; font-weight: 600; font-style: italic; display: inline-block; }
         .badge-nilai { background: #ecfdf5; color: #059669; padding: 6px 12px; border-radius: 6px; font-size: 14px; font-weight: 800; border: 1px solid #10b981; display: inline-block;}
         
-        /* Box Hasil Akhir Total */
         .box-hasil-akhir { background: #eef2ff; border: 1.5px solid #c7d2fe; padding: 15px; border-radius: 8px; margin-top: 5px; }
         .text-hasil-akhir { color: #4f46e5; font-size: 18px; font-weight: 800; display: block; margin-top: 4px; }
         
-        .btn-area { text-align: center; margin-top: 35px; display: flex; gap: 15px; justify-content: center; }
-        .btn-print { padding: 12px 24px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 14px; transition: 0.2s;}
+        .btn-area { text-align: center; margin-top: 35px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .btn-print, .btn-next { padding: 12px 24px; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 14px; transition: 0.2s; box-sizing: border-box;}
+        .btn-print { background: #4f46e5; }
         .btn-print:hover { background: #4338ca; }
-        .btn-next { padding: 12px 24px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 14px; transition: 0.2s;}
+        .btn-next { background: #10b981; }
         .btn-next:hover { background: #059669; }
-        .check-icon { color: #059669; font-weight: bold; background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+        .check-icon { color: #059669; font-weight: bold; background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-size: 12px; display: inline-block; margin-top: 4px;}
         
+        /* PENGATURAN RESPONSIVE UNTUK HP */
+        @media (max-width: 600px) {
+            body { padding: 10px 5px; }
+            .card-bukti { padding: 20px 15px; border-top-width: 6px; }
+            .kop h2 { font-size: 18px; }
+            .kop p { font-size: 12px; }
+            .no-reg { font-size: 18px; padding: 8px; }
+            
+            /* Ubah tabel menjadi tumpukan (stack) di layar kecil */
+            .main-table td { display: block; width: 100% !important; padding: 6px 0; border: none; }
+            .main-table tr { border-bottom: 1px solid #e2e8f0; display: block; padding: 8px 0; }
+            .main-table tr:last-child { border-bottom: none; }
+            .main-table td:first-child { font-size: 12px; color: #64748b; padding-bottom: 2px; } /* Label */
+            .main-table td:last-child { font-size: 14px; font-weight: 500; color: #1e293b; padding-top: 0; } /* Isi Data */
+            
+            /* Penyesuaian isi dalam rincian nilai */
+            .tabel-rincian td { display: block; width: 100%; text-align: left; }
+            .tabel-rincian tr { display: block; margin-bottom: 8px; border-bottom: 1px dotted #cbd5e1; padding-bottom: 8px;}
+            .tabel-rincian tr:last-child { border-bottom: none; }
+            
+            .btn-area { flex-direction: column; gap: 10px; }
+            .btn-print, .btn-next { width: 100%; }
+        }
+
         @media print {
             body { background: #fff; padding: 0; }
             .card-bukti { box-shadow: none; margin: 0; padding: 0; border: none; max-width: 100%; }
             .btn-area { display: none; }
             .box-nilai, .box-hasil-akhir { border: 1px solid #000; background: transparent; }
+            
+            /* Kembalikan format tabel normal saat di-print (meskipun di-print dari HP) */
+            .main-table td { display: table-cell; width: auto !important; border-bottom: 1px solid #f1f5f9; padding: 10px; }
+            .main-table tr { display: table-row; border-bottom: none; padding: 0; }
+            .main-table td:first-child { width: 35% !important; font-size: 14px; color: #475569; }
+            .tabel-rincian td { display: table-cell; width: auto; }
+            .tabel-rincian tr { display: table-row; border-bottom: none; margin-bottom: 0; padding-bottom: 0;}
         }
     </style>
 </head>

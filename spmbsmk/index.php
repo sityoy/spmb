@@ -1,4 +1,6 @@
 <?php 
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 include 'koneksi.php';
 
 // ===================================================================
@@ -73,6 +75,7 @@ if (isset($_POST['daftar'])) {
     if (empty($riwayat_penyakit)) { $riwayat_penyakit = "Tidak Ada"; }
     
     $status_kjp = trim(mysqli_real_escape_string($conn, $_POST['status_kjp']));
+    $no_rek_kjp = ""; // WAJIB TAMBAHKAN INI AGAR TIDAK ERROR
     if ($status_kjp == 'Ya') {
         $no_rek_kjp = trim(mysqli_real_escape_string($conn, $_POST['no_rek_kjp']));
         if (strlen($no_rek_kjp) < 5 || strlen($no_rek_kjp) > 15) {
@@ -114,8 +117,8 @@ if (isset($_POST['daftar'])) {
         $lat = (float)$_POST['lat'];
         $long = (float)$_POST['long'];
         
-        $latSekolah = -6.123456; // GANTI DENGAN LATITUDE SEKOLAH
-        $longSekolah = 106.123456; // GANTI DENGAN LONGITUDE SEKOLAH
+        $latSekolah = -6.157462; // GANTI DENGAN LATITUDE SEKOLAH
+        $longSekolah = 106.8035761; // GANTI DENGAN LONGITUDE SEKOLAH
         
         $theta = $long - $longSekolah;
         $dist = sin(deg2rad($lat)) * sin(deg2rad($latSekolah)) +  cos(deg2rad($lat)) * cos(deg2rad($latSekolah)) * cos(deg2rad($theta));
@@ -123,7 +126,7 @@ if (isset($_POST['daftar'])) {
         $dist = rad2deg($dist);
         $jarak_meter = $dist * 60 * 1.1515 * 1.609344 * 1000;
 
-        if ($jarak_meter > 100) { $jarak_tidak_valid = true; }
+        if ($jarak_meter > 500) { $jarak_tidak_valid = true; }
     } else {
         $jarak_tidak_valid = true; 
     }
@@ -206,6 +209,7 @@ if (isset($_POST['daftar'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SPMB Portal - SMKS PERMATA BUNDA I</title>
+    <link rel="icon" type="image/x-icon" href="logo/logosmkpb.png">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         
@@ -371,7 +375,7 @@ if (isset($_POST['daftar'])) {
 
                 <div class="form-group">
                     <label>No. HP (WhatsApp) Aktif</label>
-                    <input type="tel" name="no_whatsapp" placeholder="08xxxxxxxxxx" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                    <input type="tel" name="no_whatsapp" maxlength="15" placeholder="08xxxxxxxxxx" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                 </div>
 
                 <div class="form-group full-width">
@@ -556,8 +560,8 @@ function cekLokasi() {
     document.getElementById('info-lokasi').innerHTML = "⏳ Sedang mencari lokasi...";
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
-            const latSekolah = -6.123456; // GANTI DENGAN LATITUDE SEKOLAH
-            const longSekolah = 106.123456; // GANTI DENGAN LONGITUDE SEKOLAH
+            const latSekolah = -6.157462; 
+            const longSekolah = 106.8035761;
             
             const userLat = position.coords.latitude;
             const userLong = position.coords.longitude;
@@ -569,7 +573,7 @@ function cekLokasi() {
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             const jarak = R * c;
 
-            if (jarak <= 100) {
+            if (jarak <= 500) {
                 document.getElementById('info-lokasi').innerHTML = "✅ Lokasi Valid (Jarak: " + jarak.toFixed(2) + "m)";
                 document.getElementById('info-lokasi').className = "status-valid";
                 document.getElementById('lat').value = userLat;
@@ -577,7 +581,7 @@ function cekLokasi() {
                 isLokasiValid = true; 
                 cekSemuaValidasi();   
             } else {
-                alert("Pendaftaran Gagal!\nAnda berada di luar radius 100m dari sekolah. Jarak Anda: " + Math.round(jarak) + " meter.");
+                alert("Pendaftaran Gagal!\nAnda berada di luar radius 500m dari sekolah. Jarak Anda: " + Math.round(jarak) + " meter.");
                 document.getElementById('info-lokasi').innerHTML = "❌ Lokasi Terlalu Jauh";
                 document.getElementById('info-lokasi').className = "status-invalid";
                 isLokasiValid = false;

@@ -51,6 +51,7 @@ if (isset($_POST['submit'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Input Nilai Uji - SPMB</title>
+    <link rel="icon" type="image/x-icon" href="logo/logosmkpb.png">
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; padding: 40px; display: flex; justify-content: center; }
         .form-container { background: #fff; width: 100%; max-width: 480px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }

@@ -56,7 +56,7 @@ if (isset($_POST['cek'])) {
 
             // Validasi tanggal pembukaan pengumuman berdasarkan Gelombang pendaftar
             if ($gelombang_siswa == 1) {
-                if ($today >= '2026-07-06') { $boleh_buka = true; }
+                if ($today >= '2026-06-06') { $boleh_buka = true; }
                 else { $tgl_buka_pesan = "6 Juli 2026"; }
             } elseif ($gelombang_siswa == 2) {
                 if ($today >= '2026-07-10') { $boleh_buka = true; }
@@ -103,6 +103,7 @@ if (isset($_POST['cek'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pengumuman Hasil Seleksi Kelulusan SPMB</title>
+    <link rel="icon" type="image/x-icon" href="logo/logosmkpb.png">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 0; }
         .container { max-width: 600px; margin: 20px auto; padding: 15px; box-sizing: border-box; }

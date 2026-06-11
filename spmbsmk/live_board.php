@@ -13,7 +13,7 @@ $is_locked = false;
 $tanggal_buka = "";
 
 // Validasi Tanggal Pembukaan Live Board per Gelombang
-if ($gelombang == 1 && $today < '2026-07-06') {
+if ($gelombang == 1 && $today < '2026-06-06') {
     $is_locked = true;
     $tanggal_buka = "6 Juli 2026";
 } elseif ($gelombang == 2 && $today < '2026-07-10') {
@@ -54,6 +54,7 @@ if (!$is_locked) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Live Board Peringkat Hasil Seleksi SPMB</title>
+    <link rel="icon" type="image/x-icon" href="logo/logosmkpb.png">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f1f5f9; color: #334155; margin: 0; padding: 0; }
         .container { max-width: 1000px; margin: 20px auto; padding: 15px; box-sizing: border-box; }
@@ -71,24 +72,68 @@ if (!$is_locked) {
         .table-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); overflow: hidden; }
         .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; } /* Perbaikan UI/UX HP */
         
+        /* --- UI/UX Dropdown Baru --- */
         .dropdown-content {
-            display: none; 
-            position: absolute; 
-            right: 0; 
-            background: #ffffff; 
-            border: 1px solid #cbd5e1; 
-            padding: 15px; 
-            z-index: 9999 !important; 
-            width: 220px; 
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1); 
-            font-size: 12px; 
-            border-radius: 8px; 
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 12px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            padding: 16px;
+            z-index: 999;
+            width: 240px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            font-size: 12.5px;
+            border-radius: 12px;
             text-align: left;
             color: #334155;
             cursor: default;
-            /* Mencegah terpotong layar di HP kecil */
-            max-width: 85vw;
+            transform: translateY(-10px);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
+        /* Segitiga Penunjuk (Arrow Pointer) ke arah tombol */
+        .dropdown-content::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            right: 24px;
+            width: 12px;
+            height: 12px;
+            background: #ffffff;
+            border-left: 1px solid #e2e8f0;
+            border-top: 1px solid #e2e8f0;
+            transform: rotate(45deg);
+        }
+
+        /* Class animasi saat dropdown aktif */
+        .dropdown-content.show {
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media(max-width: 768px) {
+            .board-layout { grid-template-columns: 1fr; gap: 20px; }
+            .container { padding: 10px; }
+            
+            /* Ubah tampilan tabel menjadi kartu di HP */
+            thead { display: none; } /* Sembunyikan header tabel di HP */
+            tr { display: block; background: #fff; margin-bottom: 12px; border-radius: 10px; padding: 15px; border: 1px solid #e2e8f0; position: relative; }
+            td { display: flex; justify-content: space-between; padding: 6px 0; border: none; text-align: right; }
+            td:nth-child(1) { position: absolute; top: 15px; left: 15px; font-size: 16px; } /* Peringkat */
+            td:nth-child(2), td:nth-child(3) { display: none; } /* Sembunyikan ID di HP untuk hemat tempat */
+            td:nth-child(4) { display: block; padding-left: 30px; text-align: left; font-size: 15px; } /* Nama */
+            td:nth-child(5) { display: block; font-size: 11px; color: #64748b; text-align: left; padding-left: 30px; } /* Asal */
+            td:nth-child(6) { border-top: 1px solid #f1f5f9; margin-top: 10px; padding-top: 10px; justify-content: flex-end; }
+            
+            .dropdown-content { right: 0; width: 260px; }
+            .dropdown-content::before { right: 15px; }
+        }
+        /* ----------------------------- */
 
         .info-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
         .info-row.bold { font-weight: 700; color: #0f172a; }
@@ -133,12 +178,6 @@ if (!$is_locked) {
         .lock-icon { font-size: 40px; margin-bottom: 10px; }
         .lock-title { font-size: 16px; font-weight: bold; color: #991b1b; margin-bottom: 6px; }
         .lock-desc { font-size: 13px; color: #64748b; line-height: 1.5; }
-
-        @media(max-width: 768px) {
-            .board-layout { grid-template-columns: 1fr; }
-            /* Memastikan dropdown tidak keluar layar di kiri saat di klik di bagian tepi kanan */
-            .dropdown-content { right: 10px; left: auto; }
-        }
     </style>
 </head>
 <body>
@@ -163,6 +202,20 @@ if (!$is_locked) {
             </div>
         </div>
     <?php else: ?>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+            <div style="background: #4f46e5; color: white; padding: 12px 5px; border-radius: 12px; text-align: center;">
+                <div style="font-size: 10px; opacity: 0.8; text-transform: uppercase;">AKL</div>
+                <div style="font-size: 18px; font-weight: 800;"><?php echo mysqli_num_rows($result_live_akl); ?></div>
+            </div>
+            <div style="background: #ffffff; color: #1e293b; padding: 12px 5px; border-radius: 12px; text-align: center; border: 2px solid #4f46e5;">
+                <div style="font-size: 10px; opacity: 0.8; text-transform: uppercase; font-weight: 700;">TOTAL</div>
+                <div style="font-size: 18px; font-weight: 800; color: #4f46e5;"><?php echo mysqli_num_rows($result_live_akl) + mysqli_num_rows($result_live_mplb); ?></div>
+            </div>
+            <div style="background: #0284c7; color: white; padding: 12px 5px; border-radius: 12px; text-align: center;">
+                <div style="font-size: 10px; opacity: 0.8; text-transform: uppercase;">MPLB</div>
+                <div style="font-size: 18px; font-weight: 800;"><?php echo mysqli_num_rows($result_live_mplb); ?></div>
+            </div>
+        </div>
         <p style="text-align:center; font-size:12px; color:#64748b; margin-bottom: 15px; padding: 0 10px;">
             Sistem memproses peringkat real-time berdasarkan Nilai Akhir tertinggi. Kuota Utama Terbatas: <b><?php echo $quota; ?> Siswa / Jurusan</b>.
         </p>
@@ -175,6 +228,8 @@ if (!$is_locked) {
                     <thead>
                         <tr>
                             <th style="width:35px;">No</th>
+                            <th class="text-left">No. Pendaftaran</th>
+                            <th class="text-left">NISN</th>
                             <th class="text-left">Nama Pendaftar</th>
                             <th class="text-left">Asal Sekolah</th>
                             <th>Nilai</th>
@@ -201,17 +256,23 @@ if (!$is_locked) {
                             $hasil_berkas   = ($bobot_skl + $bobot_tka) / 2; 
                             $nilai_test     = (float)$row['nilai_test'];    
                             $total_gabungan = $hasil_berkas + $nilai_test;  
-                            $nilai_akhir_fix = $total_gabungan / 2;         
+                            $nilai_akhir_fix = $total_gabungan / 2;
+                            
+                            // Sensor NISN untuk privasi
+                            $nisn_sensor = substr($row['nisn'], 0, 3) . '****' . substr($row['nisn'], -3);
                     ?>
                         <tr class="<?php echo $cl_row; ?>">
                             <td><b><?php echo $r++; ?></b></td>
+                            <td class="text-left"><span style="font-size:11px; font-family:monospace; color:#475569; background:#f1f5f9; padding:2px 6px; border-radius:4px;"><?php echo htmlspecialchars($row['no_pendaftaran']); ?></span></td>
+                            <td class="text-left"><span style="font-size:12px; font-weight:700; color:#64748b;"><?php echo $nisn_sensor; ?></span></td>
                             <td class="text-left"><b><?php echo htmlspecialchars($row['nama_lengkap']); ?></b><?php echo $badge; ?></td>
                             <td class="text-left" style="font-size:11px;"><?php echo htmlspecialchars($row['asal_sekolah']); ?></td>
                             <td>
                                 <div style="position:relative; display:inline-block;">
                                     <button class="btn-nilai-dropdown" onclick="toggleInfoNilai(this)">
-                                        <?php echo number_format($nilai_akhir_fix, 2); ?> <span>▼</span>
-                                    </button>
+    <span style="color:#1e293b; font-size: 13px;"><?php echo number_format($nilai_akhir_fix, 2); ?></span>
+    <span style="margin-left:6px; opacity:0.5;">details</span>
+</button>
                                     
                                     <div class="dropdown-content">
                                         <div style="font-weight:800; color:#4f46e5; margin-bottom:10px; text-align:center; border-bottom:2px solid #f1f5f9; padding-bottom:6px;">
@@ -252,7 +313,7 @@ if (!$is_locked) {
                                 </div>
                             </td>
                         </tr>
-                    <?php } } else { echo "<tr><td colspan='4'>Belum ada data.</td></tr>"; } ?>
+                    <?php } } else { echo "<tr><td colspan='6'>Belum ada data.</td></tr>"; } ?>
                     </tbody>
                 </table>
                 </div>
@@ -265,6 +326,8 @@ if (!$is_locked) {
                     <thead>
                         <tr>
                             <th style="width:35px;">No</th>
+                            <th class="text-left">No. Pendaftaran</th>
+                            <th class="text-left">NISN</th>
                             <th class="text-left">Nama Pendaftar</th>
                             <th class="text-left">Asal Sekolah</th>
                             <th>Nilai</th>
@@ -291,17 +354,23 @@ if (!$is_locked) {
                             $hasil_berkas   = ($bobot_skl + $bobot_tka) / 2; 
                             $nilai_test     = (float)$row['nilai_test'];    
                             $total_gabungan = $hasil_berkas + $nilai_test;  
-                            $nilai_akhir_fix = $total_gabungan / 2;         
+                            $nilai_akhir_fix = $total_gabungan / 2;
+                            
+                            // Sensor NISN untuk privasi
+                            $nisn_sensor = substr($row['nisn'], 0, 3) . '****' . substr($row['nisn'], -3);
                     ?>
                         <tr class="<?php echo $cl_row; ?>">
                             <td><b><?php echo $r++; ?></b></td>
+                            <td class="text-left"><span style="font-size:11px; font-family:monospace; color:#475569; background:#f1f5f9; padding:2px 6px; border-radius:4px;"><?php echo htmlspecialchars($row['no_pendaftaran']); ?></span></td>
+                            <td class="text-left"><span style="font-size:12px; font-weight:700; color:#64748b;"><?php echo $nisn_sensor; ?></span></td>
                             <td class="text-left"><b><?php echo htmlspecialchars($row['nama_lengkap']); ?></b><?php echo $badge; ?></td>
                             <td class="text-left" style="font-size:11px;"><?php echo htmlspecialchars($row['asal_sekolah']); ?></td>
                             <td>
                                 <div style="position:relative; display:inline-block;">
                                     <button class="btn-nilai-dropdown" onclick="toggleInfoNilai(this)">
-                                        <?php echo number_format($nilai_akhir_fix, 2); ?> <span>▼</span>
-                                    </button>
+    <span style="color:#1e293b; font-size: 13px;"><?php echo number_format($nilai_akhir_fix, 2); ?></span>
+    <span style="margin-left:6px; opacity:0.5;">details</span>
+</button>
                                     
                                     <div class="dropdown-content">
                                         <div style="font-weight:800; color:#4f46e5; margin-bottom:10px; text-align:center; border-bottom:2px solid #f1f5f9; padding-bottom:6px;">
@@ -342,7 +411,7 @@ if (!$is_locked) {
                                 </div>
                             </td>
                         </tr>
-                    <?php } } else { echo "<tr><td colspan='4'>Belum ada data.</td></tr>"; } ?>
+                    <?php } } else { echo "<tr><td colspan='6'>Belum ada data.</td></tr>"; } ?>
                     </tbody>
                 </table>
                 </div>
@@ -355,27 +424,23 @@ if (!$is_locked) {
 
 <script>
 // Logic baru agar interaksi mulus, terutama di HP
+// Logic UI/UX Dropdown Animasi Smooth
 function toggleInfoNilai(btn) {
-    // 1. Cari dulu menu dropdown milik tombol yang diklik
     let dropdownTarget = btn.nextElementSibling;
     
-    // 2. Tutup semua dropdown lain yang sedang terbuka
+    // Tutup semua dropdown lain yang sedang terbuka
     let allDropdowns = document.querySelectorAll('.dropdown-content');
     allDropdowns.forEach(function(drop) {
         if (drop !== dropdownTarget) {
-            drop.style.display = 'none';
+            drop.classList.remove('show');
         }
     });
 
-    // 3. Buka/Tutup dropdown target
-    if (dropdownTarget.style.display === "block") {
-        dropdownTarget.style.display = "none";
-    } else {
-        dropdownTarget.style.display = "block";
-    }
+    // Toggle dropdown yang diklik (muncul / sembunyi)
+    dropdownTarget.classList.toggle('show');
 }
 
-// Menutup menu jika user menyentuh/klik area di luar tombol
+// Menutup menu jika user klik area kosong di layar
 document.addEventListener('click', function(event) {
     let isClickInsideBtn = event.target.closest('.btn-nilai-dropdown');
     let isClickInsideMenu = event.target.closest('.dropdown-content');
@@ -383,7 +448,7 @@ document.addEventListener('click', function(event) {
     if (!isClickInsideBtn && !isClickInsideMenu) {
         let allDropdowns = document.querySelectorAll('.dropdown-content');
         allDropdowns.forEach(function(drop) {
-            drop.style.display = 'none';
+            drop.classList.remove('show');
         });
     }
 });
