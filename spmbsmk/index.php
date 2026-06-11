@@ -12,7 +12,7 @@ if (!empty($_POST['website_checker'])) {
     die("Akses ditolak (Bot detected).");
 }
 // TIMESTAMPS JADWAL GELOMBANG 1 (15 Juni 2026 s.d 30 Juni 2026)
-$buka_g1  = strtotime('2026-06-10 06:00:00');
+$buka_g1  = strtotime('2026-06-15 06:00:00');
 $tutup_g1 = strtotime('2026-06-30 23:59:59');
 
 // TIMESTAMPS JADWAL GELOMBANG 2 (08 Juli 2026 s.d 09 Juli 2026)
@@ -126,7 +126,7 @@ if (isset($_POST['daftar'])) {
         $dist = rad2deg($dist);
         $jarak_meter = $dist * 60 * 1.1515 * 1.609344 * 1000;
 
-        if ($jarak_meter > 500) { $jarak_tidak_valid = true; }
+        if ($jarak_meter > 250) { $jarak_tidak_valid = true; }
     } else {
         $jarak_tidak_valid = true; 
     }
@@ -573,7 +573,7 @@ function cekLokasi() {
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             const jarak = R * c;
 
-            if (jarak <= 500) {
+            if (jarak <= 250) {
                 document.getElementById('info-lokasi').innerHTML = "✅ Lokasi Valid (Jarak: " + jarak.toFixed(2) + "m)";
                 document.getElementById('info-lokasi').className = "status-valid";
                 document.getElementById('lat').value = userLat;
@@ -581,7 +581,7 @@ function cekLokasi() {
                 isLokasiValid = true; 
                 cekSemuaValidasi();   
             } else {
-                alert("Pendaftaran Gagal!\nAnda berada di luar radius 500m dari sekolah. Jarak Anda: " + Math.round(jarak) + " meter.");
+                alert("Pendaftaran Gagal!\nAnda berada di luar radius 250m dari sekolah. Jarak Anda: " + Math.round(jarak) + " meter.");
                 document.getElementById('info-lokasi').innerHTML = "❌ Lokasi Terlalu Jauh";
                 document.getElementById('info-lokasi').className = "status-invalid";
                 isLokasiValid = false;
