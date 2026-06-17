@@ -1,39 +1,48 @@
 <?php
 session_start();
 
-// 1. Cek Login (Kunci Utama)
+// Jika ada parameter download=true, paksa jadi attachment (download)
+if (isset($_GET['download']) && $_GET['download'] === 'true') {
+    header('Content-Disposition: attachment; filename="' . basename($_GET['file']) . '"');
+} else {
+    header('Content-Disposition: inline; filename="' . basename($_GET['file']) . '"');
+}
+
 if (!isset($_SESSION['login'])) {
-    die("Akses Ditolak: Anda harus login sebagai admin untuk melihat berkas ini.");
+    die("Akses Ditolak: Anda harus login sebagai admin.");
 }
 
-// 2. Cek apakah ada request file
 if (!isset($_GET['file']) || empty($_GET['file'])) {
-    die("Akses Ditolak: Parameter file tidak ditemukan.");
+    die("Akses Ditolak: File tidak ditemukan.");
 }
 
-// 3. Bersihkan nama file dari injeksi path (Mencegah Directory Traversal / Path Traversal)
 $nama_file = basename($_GET['file']); 
-
-// 4. Tentukan folder penyimpanan yang asli (sesuaikan nama foldernya jika berbeda)
-$folder_berkas = 'uploads/'; // atau _berkas_secure/ tergantung pengaturan awal Anda
+$folder_berkas = 'uploads/'; 
 $path_lengkap = $folder_berkas . $nama_file;
 
-// 5. Verifikasi ketersediaan file
-if (file_exists($path_lengkap) && is_file($path_lengkap)) {
-    // Ambil mime type (ekstensi gambar atau pdf)
-    $mime_type = mime_content_type($path_lengkap);
+if (file_exists($path_lengkap)) {
+    $ekstensi = strtolower(pathinfo($path_lengkap, PATHINFO_EXTENSION));
     
-    // Set Header agar browser membaca file tersebut
+    // Tentukan Content-Type manual untuk memastikan browser tidak download paksa
+    $mimes = [
+        'pdf'  => 'application/pdf',
+        'jpg'  => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png'  => 'image/png',
+        'gif'  => 'image/gif'
+    ];
+    
+    $mime_type = isset($mimes[$ekstensi]) ? $mimes[$ekstensi] : mime_content_type($path_lengkap);
+    
     header("Content-Type: $mime_type");
+    // 'inline' memerintahkan browser untuk menampilkan langsung (bukan download)
     header("Content-Disposition: inline; filename=\"" . $nama_file . "\"");
     header("Content-Length: " . filesize($path_lengkap));
-    header("Cache-Control: private, max-age=0, must-revalidate");
-    header("Pragma: public");
+    header("Cache-Control: no-cache, must-revalidate");
     
-    // Tampilkan file
     readfile($path_lengkap);
     exit;
 } else {
-    die("Error 404: File tidak ditemukan di server atau telah dihapus.");
+    die("Error 404: File tidak ditemukan.");
 }
 ?>

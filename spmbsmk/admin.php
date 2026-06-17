@@ -9,13 +9,11 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // --- TAMBAHAN ANTI-HACK ---
-// 1. Mencegah akses langsung ke file ini oleh user yang tidak punya izin di sesi
 if (!isset($_SESSION['login'])) {
     header("Location: login.php");
     exit;
 }
 
-// 2. Mencegah XSS (Cross-Site Scripting) pada parameter URL
 $_GET['tab'] = isset($_GET['tab']) ? preg_replace('/[^a-zA-Z0-9]/', '', $_GET['tab']) : 'akl';
 $_GET['gel'] = isset($_GET['gel']) ? preg_replace('/[^a-zA-Z0-9]/', '', $_GET['gel']) : 'Semua';
 // --- END ANTI-HACK ---
@@ -23,15 +21,10 @@ $_GET['gel'] = isset($_GET['gel']) ? preg_replace('/[^a-zA-Z0-9]/', '', $_GET['g
 include 'koneksi.php';
 
 $tab_aktif = isset($_GET['tab']) ? $_GET['tab'] : 'akl';
-
-// MENGAMBIL FILTER GELOMBANG DARI URL (SEKARANG PAKAI ANGKA 1 ATAU 2)
 $gel_aktif = isset($_GET['gel']) ? $_GET['gel'] : 'Semua';
 $sql_gel_filter = ($gel_aktif == 'Semua') ? "" : " AND gelombang = '$gel_aktif'";
-
-// Label untuk tampilan UI agar tetap enak dibaca ("Semua Gelombang", "Gelombang 1", "Gelombang 2")
 $label_gelombang = ($gel_aktif == 'Semua') ? "Semua Gelombang" : "Gelombang " . $gel_aktif;
 
-// FUNGSI MENGHITUNG KUOTA DINAMIS PER GELOMBANG
 function hitungKuota($jurusan, $status, $gel, $conn) {
     $filter = ($gel == 'Semua') ? "" : " AND gelombang = '$gel'";
     $q = mysqli_query($conn, "SELECT COUNT(*) as total FROM pendaftar WHERE pilihan_jurusan = '$jurusan' AND status_konfirmasi = '$status' $filter");
@@ -47,7 +40,6 @@ $mplb_utama    = hitungKuota('Manajemen Perkantoran dan Layanan Bisnis', 'Jadi',
 
 $tot_all = $tot_akl_all + $tot_mplb_all;
 
-// LOGIKA URUTAN BERDASARKAN NILAI AKHIR (SUDAH DIPERBAIKI MENGGUNAKAN nilai_akhir_sql)
 $order_logic = "ORDER BY CASE status_konfirmasi 
                     WHEN 'Jadi' THEN 1 
                     WHEN 'Belum' THEN 2 
@@ -61,6 +53,9 @@ $result_akl = mysqli_query($conn, $query_akl);
 
 $query_mplb = "SELECT *, $rumus_nilai as nilai_akhir_sql FROM pendaftar WHERE pilihan_jurusan = 'Manajemen Perkantoran dan Layanan Bisnis' $sql_gel_filter $order_logic";
 $result_mplb = mysqli_query($conn, $query_mplb);
+
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+$domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -73,15 +68,15 @@ $result_mplb = mysqli_query($conn, $query_mplb);
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; color: #1e293b; margin: 0; padding-bottom: 50px;}
         .nav-admin { background: #fff; padding: 15px 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; }
         
-        /* Area Filter Gelombang */
         .filter-gelombang { background: #fff; padding: 15px 25px; border-radius: 12px; margin: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .btn-filter { padding: 8px 18px; border-radius: 8px; font-weight: 600; font-size: 13.5px; text-decoration: none; color: #64748b; background: #f1f5f9; border: 1px solid #cbd5e1; transition: all 0.2s; }
         .btn-filter:hover { background: #e2e8f0; }
         .btn-filter.active { background: #4f46e5; color: #fff; border-color: #4f46e5; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2); }
 
         .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 0 20px 20px 20px; }
-        .card-box { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .card-box { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); position: relative; overflow: hidden; }
         .card-box h4 { margin: 0 0 15px 0; font-size: 14px; color: #475569; font-weight: 700; text-transform: uppercase; }
+        .stat-badge-small { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; margin-top: 10px; }
         
         .btn-toggle-jurusan { width: calc(100% - 40px); margin: 15px 20px 0 20px; background: #ffffff; padding: 18px 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); display: flex; justify-content: space-between; align-items: center; border: 1px solid #e2e8f0; cursor: pointer; text-align: left; }
         .btn-toggle-jurusan h3 { margin: 0; font-size: 16px; color: #1e293b; font-weight: 800; display: flex; align-items: center; gap: 10px; }
@@ -97,8 +92,18 @@ $result_mplb = mysqli_query($conn, $query_mplb);
         
         .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
         .btn-action { display: inline-block; padding: 6px 12px; font-size: 11.5px; font-weight: 600; border-radius: 6px; text-decoration: none; border: none; cursor: pointer; color: white; text-align: center; }
-        .bg-view { background: #4f46e5; } .bg-edit { background: #0284c7; } .bg-success-btn { background: #10b981; } .bg-danger-btn { background: #ef4444; } .bg-reset-btn { background: #64748b; } .bg-move-btn { background: #f59e0b; } .bg-print-bukti { background: #8b5cf6; } .bg-offline { background: #334155; }
         
+        .bg-view { background: #4f46e5; } 
+        .bg-edit { background: #0284c7; } 
+        .bg-success-btn { background: #10b981; } 
+        .bg-danger-btn { background: #ef4444; } 
+        .bg-reset-btn { background: #64748b; } 
+        .bg-move-btn { background: #f59e0b; } 
+        .bg-print-bukti { background: #8b5cf6; } 
+        .bg-offline { background: #334155; }
+        .bg-wa { background: #25D366; color: white; } 
+        .bg-kolektif { background: #f43f5e; color: white; } 
+
         .status-badge { padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 4px; text-transform: uppercase; }
         .badge-locked-utama { background: #d1fae5; color: #065f46; border: 1px solid #34d399; }
         .badge-forced-cadangan { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
@@ -106,11 +111,9 @@ $result_mplb = mysqli_query($conn, $query_mplb);
         
         .small-text { font-size: 11px; color: #64748b; display: block; line-height: 1.4; }
         
-        /* Box Nilai Diperlebar dan Diperjelas */
         .nilai-box { background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; display: inline-block; min-width: 220px;}
         .rincian-bobot { font-size: 10.5px; color: #64748b; margin-bottom: 6px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 6px; line-height: 1.6; }
         
-        /* Modal Style */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,23,42,0.6); display: none; align-items: center; justify-content: center; z-index: 9999; }
         .modal-content { background: #fff; width: 92%; max-width: 650px; border-radius: 16px; padding: 25px; max-height: 90vh; overflow-y: auto;}
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; }
@@ -129,7 +132,8 @@ $result_mplb = mysqli_query($conn, $query_mplb);
             <h2 style="margin: 0; font-size: 20px;">Dasbor Seleksi Penerimaan Siswa Baru</h2>
             <small style="color:#64748b;">Otoritas: <b><?php echo isset($_SESSION['admin_user']) ? $_SESSION['admin_user'] : 'Admin Panitia'; ?></b></small>
         </div>
-        <div style="display:flex; gap:10px;">
+        <div style="display:flex; gap:10px; flex-wrap: wrap;">
+            <a href="cetak_kolektif.php" target="_blank" class="btn-action bg-kolektif">📑 Cetak Bukti Kolektif</a>
             <a href="formulir_offline.php" target="_blank" class="btn-action bg-offline">🖨️ Cetak Form Offline</a>
             <a href="logout.php" class="btn-action bg-danger-btn" onclick="return confirm('Keluar sistem?')">Logout</a>
         </div>
@@ -148,18 +152,20 @@ $result_mplb = mysqli_query($conn, $query_mplb);
             <div style="font-size: 32px; font-weight: 800; color:#1e293b;"><?php echo $tot_all; ?> <span style="font-size:14px; color:#64748b;">Siswa</span></div>
         </div>
         <div class="card-box" style="border-left: 5px solid #10b981;">
-            <h4>Lulus AKL (<?php echo $label_gelombang; ?>)</h4>
-            <div style="font-size: 26px; font-weight: 800; color:#065f46;"><?php echo $akl_utama; ?> <span style="font-size:14px; color:#64748b;">Siswa</span></div>
+            <h4>Statistik AKL (<?php echo $label_gelombang; ?>)</h4>
+            <div style="font-size: 26px; font-weight: 800; color:#1e293b;"><?php echo $tot_akl_all; ?> <span style="font-size:14px; color:#64748b;">Mendaftar</span></div>
+            <div class="stat-badge-small" style="background: #d1fae5; color: #065f46; border: 1px solid #34d399;">Lulus: <?php echo $akl_utama; ?> Siswa</div>
         </div>
         <div class="card-box" style="border-left: 5px solid #0284c7;">
-            <h4>Lulus MPLB (<?php echo $label_gelombang; ?>)</h4>
-            <div style="font-size: 26px; font-weight: 800; color:#0369a1;"><?php echo $mplb_utama; ?> <span style="font-size:14px; color:#64748b;">Siswa</span></div>
+            <h4>Statistik MPLB (<?php echo $label_gelombang; ?>)</h4>
+            <div style="font-size: 26px; font-weight: 800; color:#1e293b;"><?php echo $tot_mplb_all; ?> <span style="font-size:14px; color:#64748b;">Mendaftar</span></div>
+            <div class="stat-badge-small" style="background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc;">Lulus: <?php echo $mplb_utama; ?> Siswa</div>
         </div>
     </div>
 
     <button class="btn-toggle-jurusan <?php echo ($tab_aktif == 'akl') ? 'aktif' : ''; ?>" onclick="toggleTabel('panel_akl', this, 'akl')" style="border-left: 6px solid #10b981;">
         <h3>📁 Akuntansi dan Keuangan Lembaga (AKL)</h3>
-        <div><span class="badge-count" style="background: #d1fae5; color: #065f46;">Lulus: <?php echo $akl_utama; ?></span></div>
+        <div><span class="badge-count" style="background: #d1fae5; color: #065f46;">Lulus: <?php echo $akl_utama; ?> / <?php echo $tot_akl_all; ?></span></div>
     </button>
 
     <div id="panel_akl" class="panel-tabel <?php echo ($tab_aktif == 'akl') ? 'terbuka' : ''; ?>">
@@ -169,7 +175,7 @@ $result_mplb = mysqli_query($conn, $query_mplb);
                     <tr>
                         <th>Rank</th>
                         <th>Identitas & Gelombang</th>
-                        <th>Riwayat Penyakit</th>
+                        <th>No HP (WA)</th>
                         <th>Status</th>
                         <th>Dokumen Fisik</th>
                         <th>Evaluasi Nilai & Pembobotan</th>
@@ -185,11 +191,22 @@ $result_mplb = mysqli_query($conn, $query_mplb);
                                 $zb = "<span class='status-badge badge-locked-utama'>🔒 Lulus</span>";
                             } elseif ($row['status_konfirmasi'] == 'Tidak Jadi') {
                                 $zb = "<span class='status-badge badge-forced-cadangan'>❌ Tidak Jadi</span>";
+                                if (!empty($row['alasan_pembatalan'])) {
+                                    $zb .= "<span style='display:block; margin-top:6px; color:#ef4444; font-size:11.5px; font-weight:600; font-style:italic;'>💬 " . htmlspecialchars($row['alasan_pembatalan'], ENT_QUOTES, 'UTF-8') . "</span>";                                }
                             } else {
                                 $zb = "<span class='status-badge badge-utama'>Menunggu ($rank)</span>";
                             }
 
-                            // PERHITUNGAN UNTUK TAMPILAN ADMIN (Selaras dengan bukti cetak)
+                            // Format No HP untuk WA
+                            $no_hp = preg_replace('/[^0-9]/', '', $row['no_whatsapp']);
+                            if (substr($no_hp, 0, 1) == '0') {
+                                $no_wa = '62' . substr($no_hp, 1);
+                            } else {
+                                $no_wa = $no_hp;
+                            }
+                            
+                            $pesan_wa = urlencode("Halo Bapak/Ibu Calon Wali Murid dari *" . $row['nama_lengkap'] . "* (NISN: " . $row['nisn'] . ").\n\nBerikut kami sampaikan Bukti Pendaftaran dan Pengumuman SPMB SMK Permata Bunda I (Sekolah Swasta Gratis).\n\nSilakan klik tautan ini untuk mengunduh bukti Anda:\n" . $domain_web . "/bukti.php?no_pendaftaran=" . $row['no_pendaftaran']);
+
                             $asli_skl = (float)$row['nilai_skl'];
                             $asli_tka = (float)$row['nilai_tka'];
                             $bobot_skl = $asli_skl * 0.70;
@@ -210,7 +227,10 @@ $result_mplb = mysqli_query($conn, $query_mplb);
                                 <span class="small-text">Jalur: <b style="color:#d97706;">Gelombang <?php echo htmlspecialchars($row['gelombang'], ENT_QUOTES, 'UTF-8'); ?></b></span>
                             </div>
                         </td>
-                        <td><b style="color:#dc2626; font-size:11px;"><?php echo htmlspecialchars($row['riwayat_penyakit'], ENT_QUOTES, 'UTF-8'); ?></b></td>
+                        <td>
+                            <span style="font-weight:600; display:block; margin-bottom:5px; font-size:13px;"><?php echo htmlspecialchars($row['no_whatsapp'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            <a href="https://wa.me/<?php echo $no_wa; ?>?text=<?php echo $pesan_wa; ?>" target="_blank" class="btn-action bg-wa">💬 Kirim WA Bukti</a>
+                        </td>
                         <td><?php echo $zb; ?></td>
                         <td>
                             <button class="btn-action bg-view" onclick="bukaModalBerkas('<?php echo addslashes($row['nama_lengkap']); ?>', '<?php echo $row['file_ijazah']; ?>', '<?php echo $row['file_tka']; ?>', '<?php echo $row['file_kk']; ?>', '<?php echo $row['file_akte']; ?>', '<?php echo $row['file_ktp_bapak']; ?>', '<?php echo $row['file_ktp_ibu']; ?>', '<?php echo $row['file_sptjm']; ?>', '<?php echo $row['status_kjp']; ?>', '<?php echo $row['file_tabungan_kjp']; ?>')">📂 Cek Berkas</button>
@@ -240,7 +260,7 @@ $result_mplb = mysqli_query($conn, $query_mplb);
                                     <a href="edit.php?id=<?php echo $row['id']; ?>&tab=akl" class="btn-action bg-edit">Isi Nilai Test</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Jadi&tab=akl" class="btn-action bg-success-btn" onclick="return confirm('Kunci kelulusan untuk siswa ini?')">Lulus</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=mplb" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan MPLB?')">Lempar MPLB</a>
-                                    <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Tidak Jadi&tab=akl" class="btn-action bg-danger-btn" onclick="return confirm('Batalkan pendaftar ini?')">Tidak Jadi</a>
+                                    <a href="#" class="btn-action bg-danger-btn" onclick="let alasan = prompt('Masukkan alasan pembatalan untuk siswa ini:'); if(alasan === null) return false; if(alasan.trim() === '') { alert('Alasan wajib diisi untuk membatalkan!'); return false; } window.location.href='konfirmasi.php?id=<?php echo $row['id']; ?>&status=Tidak Jadi&tab=akl&alasan=' + encodeURIComponent(alasan); return false;">Tidak Jadi</a>
                                 <?php else: ?>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Reset&tab=akl" class="btn-action bg-reset-btn" onclick="return confirm('Kembalikan status siswa ke menunggu?')">Reset Status</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=mplb" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan MPLB?')">Lempar MPLB</a>
@@ -257,7 +277,7 @@ $result_mplb = mysqli_query($conn, $query_mplb);
 
     <button class="btn-toggle-jurusan <?php echo ($tab_aktif == 'mplb') ? 'aktif' : ''; ?>" onclick="toggleTabel('panel_mplb', this, 'mplb')" style="border-left: 6px solid #0284c7;">
         <h3>📁 Manajemen Perkantoran dan Layanan Bisnis (MPLB)</h3>
-        <div><span class="badge-count" style="background: #e0f2fe; color: #0369a1;">Lulus: <?php echo $mplb_utama; ?></span></div>
+        <div><span class="badge-count" style="background: #e0f2fe; color: #0369a1;">Lulus: <?php echo $mplb_utama; ?> / <?php echo $tot_mplb_all; ?></span></div>
     </button>
 
     <div id="panel_mplb" class="panel-tabel <?php echo ($tab_aktif == 'mplb') ? 'terbuka' : ''; ?>">
@@ -267,7 +287,7 @@ $result_mplb = mysqli_query($conn, $query_mplb);
                     <tr>
                         <th>Rank</th>
                         <th>Identitas & Gelombang</th>
-                        <th>Riwayat Penyakit</th>
+                        <th>No HP (WA)</th>
                         <th>Status</th>
                         <th>Dokumen Fisik</th>
                         <th>Evaluasi Nilai & Pembobotan</th>
@@ -283,11 +303,21 @@ $result_mplb = mysqli_query($conn, $query_mplb);
                                 $zb = "<span class='status-badge badge-locked-utama'>🔒 Lulus</span>";
                             } elseif ($row['status_konfirmasi'] == 'Tidak Jadi') {
                                 $zb = "<span class='status-badge badge-forced-cadangan'>❌ Tidak Jadi</span>";
+                                if (!empty($row['alasan_pembatalan'])) {
+                                    $zb .= "<span style='display:block; margin-top:6px; color:#ef4444; font-size:11.5px; font-weight:600; font-style:italic;'>💬 " . htmlspecialchars($row['alasan_pembatalan'], ENT_QUOTES, 'UTF-8') . "</span>";                                }
                             } else {
                                 $zb = "<span class='status-badge badge-utama'>Menunggu ($rank)</span>";
                             }
 
-                            // PERHITUNGAN UNTUK TAMPILAN ADMIN
+                            $no_hp = preg_replace('/[^0-9]/', '', $row['no_whatsapp']);
+                            if (substr($no_hp, 0, 1) == '0') {
+                                $no_wa = '62' . substr($no_hp, 1);
+                            } else {
+                                $no_wa = $no_hp;
+                            }
+                            
+                            $pesan_wa = urlencode("Halo Bapak/Ibu Calon Wali Murid dari *" . $row['nama_lengkap'] . "* (NISN: " . $row['nisn'] . ").\n\nBerikut kami sampaikan Bukti Pendaftaran dan Pengumuman SPMB SMK Permata Bunda I (Sekolah Swasta Gratis).\n\nSilakan klik tautan ini untuk mengunduh bukti Anda:\n" . $domain_web . "/bukti.php?no_pendaftaran=" . $row['no_pendaftaran']);
+
                             $asli_skl = (float)$row['nilai_skl'];
                             $asli_tka = (float)$row['nilai_tka'];
                             $bobot_skl = $asli_skl * 0.70;
@@ -308,7 +338,10 @@ $result_mplb = mysqli_query($conn, $query_mplb);
                                 <span class="small-text">Jalur: <b style="color:#d97706;">Gelombang <?php echo htmlspecialchars($row['gelombang'], ENT_QUOTES, 'UTF-8'); ?></b></span>
                             </div>
                         </td>
-                        <td><b style="color:#dc2626; font-size:11px;"><?php echo htmlspecialchars($row['riwayat_penyakit'], ENT_QUOTES, 'UTF-8'); ?></b></td>
+                        <td>
+                            <span style="font-weight:600; display:block; margin-bottom:5px; font-size:13px;"><?php echo htmlspecialchars($row['no_whatsapp'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            <a href="https://wa.me/<?php echo $no_wa; ?>?text=<?php echo $pesan_wa; ?>" target="_blank" class="btn-action bg-wa">💬 Kirim WA Bukti</a>
+                        </td>
                         <td><?php echo $zb; ?></td>
                         <td>
                             <button class="btn-action bg-view" onclick="bukaModalBerkas('<?php echo addslashes($row['nama_lengkap']); ?>', '<?php echo $row['file_ijazah']; ?>', '<?php echo $row['file_tka']; ?>', '<?php echo $row['file_kk']; ?>', '<?php echo $row['file_akte']; ?>', '<?php echo $row['file_ktp_bapak']; ?>', '<?php echo $row['file_ktp_ibu']; ?>', '<?php echo $row['file_sptjm']; ?>', '<?php echo $row['status_kjp']; ?>', '<?php echo $row['file_tabungan_kjp']; ?>')">📂 Cek Berkas</button>
@@ -338,7 +371,7 @@ $result_mplb = mysqli_query($conn, $query_mplb);
                                     <a href="edit.php?id=<?php echo $row['id']; ?>&tab=mplb" class="btn-action bg-edit">Isi Nilai Test</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Jadi&tab=mplb" class="btn-action bg-success-btn" onclick="return confirm('Kunci kelulusan untuk siswa ini?')">Lulus</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=akl" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan AKL?')">Lempar AKL</a>
-                                    <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Tidak Jadi&tab=mplb" class="btn-action bg-danger-btn" onclick="return confirm('Batalkan pendaftar ini?')">Tidak Jadi</a>
+                                    <a href="#" class="btn-action bg-danger-btn" onclick="let alasan = prompt('Masukkan alasan pembatalan untuk siswa ini:'); if(alasan === null) return false; if(alasan.trim() === '') { alert('Alasan wajib diisi untuk membatalkan!'); return false; } window.location.href='konfirmasi.php?id=<?php echo $row['id']; ?>&status=Tidak Jadi&tab=mplb&alasan=' + encodeURIComponent(alasan); return false;">Tidak Jadi</a>
                                 <?php else: ?>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Reset&tab=mplb" class="btn-action bg-reset-btn" onclick="return confirm('Kembalikan status siswa ke menunggu?')">Reset Status</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=akl" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan AKL?')">Lempar AKL</a>
@@ -364,7 +397,6 @@ $result_mplb = mysqli_query($conn, $query_mplb);
     </div>
 
     <script>
-    // FUNGSI TOGGLE JURUSAN & MENYIMPAN STATUS FILTER GELOMBANG
     function toggleTabel(idPanel, tombol, namaTab) {
         document.querySelectorAll('.panel-tabel').forEach(p => p.classList.remove('terbuka'));
         document.querySelectorAll('.btn-toggle-jurusan').forEach(b => b.classList.remove('aktif'));
@@ -376,19 +408,61 @@ $result_mplb = mysqli_query($conn, $query_mplb);
         window.history.replaceState(null, null, '?tab=' + namaTab + '&gel=' + currentGel);
     }
 
-    // Modal berkas
     function bukaModalBerkas(nama, ijazah, tka, kk, akte, ktpbapak, ktpibu, sptjm, kjp_status, tabkjp) {
         document.getElementById('mdl_nama').innerText = nama;
+        
+        // Kita simpan daftar file dalam array agar bisa di-looping dengan mudah
+        const berkas = [
+            { nama: 'Ijazah', file: ijazah },
+            { nama: 'TKA', file: tka },
+            { nama: 'KK', file: kk },
+            { nama: 'Akte', file: akte },
+            { nama: 'KTP Bpk', file: ktpbapak },
+            { nama: 'KTP Ibu', file: ktpibu },
+            { nama: 'SPTJM', file: sptjm }
+        ];
+
         let html = '<div class="grid-berkas">';
-        html += tplFile('Ijazah', ijazah); html += tplFile('TKA', tka); html += tplFile('KK', kk); html += tplFile('Akte', akte);
-        html += tplFile('KTP Bpk', ktpbapak); html += tplFile('KTP Ibu', ktpibu); html += tplFile('SPTJM', sptjm);
-        html += (kjp_status === 'Ya') ? tplFile('KJP', tabkjp) : `<div class="berkas-item" style="background:#f8fafc; border-color:#e2e8f0;"><span>ℹ️ Bukan Pemilik KJP</span></div>`;
+        berkas.forEach(b => {
+            html += (b.file) ? 
+                `<div class="berkas-item success">
+                    <span>✅ ${b.nama}</span>
+                    <button onclick="tampilkanPreview('view_file.php?file=${encodeURIComponent(b.file)}')" class="btn-lihat">👁️ Lihat</button>
+                 </div>` : 
+                `<div class="berkas-item danger"><span>❌ ${b.nama}</span></div>`;
+        });
+        
+        // Tambahan KJP
+        if (kjp_status === 'Ya') {
+            html += `<div class="berkas-item success"><span>✅ KJP</span><button onclick="tampilkanPreview('view_file.php?file=${encodeURIComponent(tabkjp)}')" class="btn-lihat">👁️ Lihat</button></div>`;
+        }
+        
         html += '</div>';
+        // Area untuk preview file
+        html += '<div id="area-preview" style="margin-top:20px; border-top:2px solid #f1f5f9; padding-top:15px;"></div>';
+        
         document.getElementById('mdl_body').innerHTML = html;
         document.getElementById('modalBerkas').style.display = 'flex';
     }
 
-    // PENGAMANAN LINK BERKAS VIA SCRIPT (VIEW_FILE.PHP)
+    // Fungsi baru untuk memuat file ke dalam iframe di bawah modal
+    // Fungsi untuk memuat file ke dalam iframe dan menambahkan tombol download manual
+    function tampilkanPreview(url) {
+        const area = document.getElementById('area-preview');
+        // Ambil nama file dari URL untuk kebutuhan link download
+        const fileName = decodeURIComponent(url.split('file=')[1]);
+        
+        area.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                <p style="font-size:12px; margin:0;">Pratinjau:</p>
+                <a href="${url}&download=true" target="_blank" 
+                style="background:#64748b; color:white; padding:5px 10px; border-radius:5px; text-decoration:none; font-size:11px;">
+                💾 Download
+                </a>
+            </div>
+            <iframe src="${url}" style="width:100%; height:500px; border:1px solid #ddd; border-radius:8px;"></iframe>
+        `;
+    }
     function tplFile(lbl, file) {
         return (file) ? `<div class="berkas-item success"><span>✅ ${lbl}</span><a href="view_file.php?file=${encodeURIComponent(file)}" target="_blank" class="btn-lihat">👁️ Lihat File (Aman)</a></div>` 
                       : `<div class="berkas-item danger"><span>❌ ${lbl}</span></div>`;

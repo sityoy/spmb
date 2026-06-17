@@ -56,8 +56,8 @@ if (isset($_POST['cek'])) {
 
             // Validasi tanggal pembukaan pengumuman berdasarkan Gelombang pendaftar
             if ($gelombang_siswa == 1) {
-                if ($today >= '2026-07-06') { $boleh_buka = true; }
-                else { $tgl_buka_pesan = "6 Juli 2026"; }
+                if ($today >= '2026-07-01') { $boleh_buka = true; }
+                else { $tgl_buka_pesan = "1 Juli 2026"; }
             } elseif ($gelombang_siswa == 2) {
                 if ($today >= '2026-07-10') { $boleh_buka = true; }
                 else { $tgl_buka_pesan = "10 Juli 2026"; }

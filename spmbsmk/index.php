@@ -1,6 +1,7 @@
 <?php 
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+session_start();
+// ini_set('display_errors', 1);
+// error_reporting(E_ALL);
 include 'koneksi.php';
 
 // ===================================================================
@@ -126,7 +127,7 @@ if (isset($_POST['daftar'])) {
         $dist = rad2deg($dist);
         $jarak_meter = $dist * 60 * 1.1515 * 1.609344 * 1000;
 
-        if ($jarak_meter > 250) { $jarak_tidak_valid = true; }
+        if ($jarak_meter > 350) { $jarak_tidak_valid = true; }
     } else {
         $jarak_tidak_valid = true; 
     }
@@ -194,6 +195,9 @@ if (isset($_POST['daftar'])) {
                       VALUES ('$no_pendaftaran', '$nama', '$tmpl_lahir', '$tgl_lahir', '$nisn', '$no_ijazah', '$asal', '$riwayat_penyakit', '$wa', '$jurusan', '$skl', '$tka', '0.00', '$nama_ijazah', '$nama_tka', '$nama_kk', '$nama_akte', '$no_kk', 'Belum', '$nama_ktp_bapak', '$nama_ktp_ibu', '$nama_sptjm', '$status_kjp', '$no_rek_kjp', '$nama_tabungan_kjp', '$gelombang_id')";
 
             if (mysqli_query($conn, $query)) {
+                // Tambahkan baris ini agar langsung lolos verifikasi NISN
+                $_SESSION['izin_akses_bukti_' . $no_pendaftaran] = true;
+                
                 header("Location: bukti.php?no_pendaftaran=" . urlencode(trim($no_pendaftaran)));
                 exit;
             } else {
@@ -573,7 +577,7 @@ function cekLokasi() {
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             const jarak = R * c;
 
-            if (jarak <= 250) {
+            if (jarak <= 350) {
                 document.getElementById('info-lokasi').innerHTML = "✅ Lokasi Valid (Jarak: " + jarak.toFixed(2) + "m)";
                 document.getElementById('info-lokasi').className = "status-valid";
                 document.getElementById('lat').value = userLat;
@@ -581,7 +585,7 @@ function cekLokasi() {
                 isLokasiValid = true; 
                 cekSemuaValidasi();   
             } else {
-                alert("Pendaftaran Gagal!\nAnda berada di luar radius 250m dari sekolah. Jarak Anda: " + Math.round(jarak) + " meter.");
+                alert("Pendaftaran Gagal!\nAnda berada di luar radius 350m dari sekolah. Jarak Anda: " + Math.round(jarak) + " meter.");
                 document.getElementById('info-lokasi').innerHTML = "❌ Lokasi Terlalu Jauh";
                 document.getElementById('info-lokasi').className = "status-invalid";
                 isLokasiValid = false;
