@@ -22,8 +22,15 @@ include 'koneksi.php';
 
 $tab_aktif = isset($_GET['tab']) ? $_GET['tab'] : 'akl';
 $gel_aktif = isset($_GET['gel']) ? $_GET['gel'] : 'Semua';
+
+// Tangkap keyword pencarian
+$search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
+
 $sql_gel_filter = ($gel_aktif == 'Semua') ? "" : " AND gelombang = '$gel_aktif'";
 $label_gelombang = ($gel_aktif == 'Semua') ? "Semua Gelombang" : "Gelombang " . $gel_aktif;
+
+// Filter Pencarian (Nama, No Daftar, atau NISN)
+$sql_search_filter = ($search != '') ? " AND (nama_lengkap LIKE '%$search%' OR no_pendaftaran LIKE '%$search%' OR nisn LIKE '%$search%')" : "";
 
 function hitungKuota($jurusan, $status, $gel, $conn) {
     $filter = ($gel == 'Semua') ? "" : " AND gelombang = '$gel'";
@@ -31,7 +38,7 @@ function hitungKuota($jurusan, $status, $gel, $conn) {
     return mysqli_fetch_assoc($q)['total'];
 }
 
-// Menghitung statistik berdasarkan filter gelombang yang aktif
+// Menghitung statistik (Statistik tetap berdasarkan gelombang, mengabaikan filter pencarian agar angka total tetap akurat)
 $tot_akl_all = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as total FROM pendaftar WHERE pilihan_jurusan = 'Akuntansi dan Keuangan Lembaga' $sql_gel_filter"))['total'];
 $akl_utama    = hitungKuota('Akuntansi dan Keuangan Lembaga', 'Jadi', $gel_aktif, $conn);
 
@@ -48,10 +55,11 @@ $order_logic = "ORDER BY CASE status_konfirmasi
 
 $rumus_nilai = "(((((nilai_skl * 0.7) + (nilai_tka * 0.3)) / 2) + nilai_test) / 2)";
 
-$query_akl = "SELECT *, $rumus_nilai as nilai_akhir_sql FROM pendaftar WHERE pilihan_jurusan = 'Akuntansi dan Keuangan Lembaga' $sql_gel_filter $order_logic";
+// Query tabel digabungkan dengan Filter Gelombang & Filter Pencarian
+$query_akl = "SELECT *, $rumus_nilai as nilai_akhir_sql FROM pendaftar WHERE pilihan_jurusan = 'Akuntansi dan Keuangan Lembaga' $sql_gel_filter $sql_search_filter $order_logic";
 $result_akl = mysqli_query($conn, $query_akl);
 
-$query_mplb = "SELECT *, $rumus_nilai as nilai_akhir_sql FROM pendaftar WHERE pilihan_jurusan = 'Manajemen Perkantoran dan Layanan Bisnis' $sql_gel_filter $order_logic";
+$query_mplb = "SELECT *, $rumus_nilai as nilai_akhir_sql FROM pendaftar WHERE pilihan_jurusan = 'Manajemen Perkantoran dan Layanan Bisnis' $sql_gel_filter $sql_search_filter $order_logic";
 $result_mplb = mysqli_query($conn, $query_mplb);
 
 $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
@@ -68,7 +76,15 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; color: #1e293b; margin: 0; padding-bottom: 50px;}
         .nav-admin { background: #fff; padding: 15px 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; }
         
-        .filter-gelombang { background: #fff; padding: 15px 25px; border-radius: 12px; margin: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        /* Modifikasi container filter agar mendukung form pencarian di sebelah kanan */
+        .filter-container { background: #fff; padding: 15px 25px; border-radius: 12px; margin: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .filter-gelombang { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .search-box { display: flex; gap: 8px; flex-wrap: wrap; }
+        .search-box input { padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; width: 250px; font-family: inherit; font-size: 13.5px; }
+        .search-box input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+        .btn-search { padding: 8px 15px; background: #4f46e5; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 13.5px; }
+        .btn-reset-search { padding: 8px 15px; background: #ef4444; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 13.5px; }
+
         .btn-filter { padding: 8px 18px; border-radius: 8px; font-weight: 600; font-size: 13.5px; text-decoration: none; color: #64748b; background: #f1f5f9; border: 1px solid #cbd5e1; transition: all 0.2s; }
         .btn-filter:hover { background: #e2e8f0; }
         .btn-filter.active { background: #4f46e5; color: #fff; border-color: #4f46e5; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2); }
@@ -133,17 +149,31 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
             <small style="color:#64748b;">Otoritas: <b><?php echo isset($_SESSION['admin_user']) ? $_SESSION['admin_user'] : 'Admin Panitia'; ?></b></small>
         </div>
         <div style="display:flex; gap:10px; flex-wrap: wrap;">
+            <a href="cetak_nilai_kolektif.php?gel=<?php echo $gel_aktif; ?>" target="_blank" class="btn-action bg-edit" style="background: #0ea5e9;">📊 Cetak Rekap Nilai</a>
+            <a href="broadcast_wa.php" class="btn-action" style="background: #25D366; color: white;">📢 Broadcast WA</a>
             <a href="cetak_kolektif.php" target="_blank" class="btn-action bg-kolektif">📑 Cetak Bukti Kolektif</a>
             <a href="formulir_offline.php" target="_blank" class="btn-action bg-offline">🖨️ Cetak Form Offline</a>
             <a href="logout.php" class="btn-action bg-danger-btn" onclick="return confirm('Keluar sistem?')">Logout</a>
         </div>
     </div>
 
-    <div class="filter-gelombang">
-        <span style="font-weight:700; color:#475569; font-size:14px;">🎛️ Filter Tampilan:</span>
-        <a href="?tab=<?php echo $tab_aktif; ?>&gel=Semua" class="btn-filter <?php echo ($gel_aktif == 'Semua') ? 'active' : ''; ?>">Semua Gelombang</a>
-        <a href="?tab=<?php echo $tab_aktif; ?>&gel=1" class="btn-filter <?php echo ($gel_aktif == '1') ? 'active' : ''; ?>">Hanya Gelombang 1</a>
-        <a href="?tab=<?php echo $tab_aktif; ?>&gel=2" class="btn-filter <?php echo ($gel_aktif == '2') ? 'active' : ''; ?>">Hanya Gelombang 2</a>
+    <div class="filter-container">
+        <div class="filter-gelombang">
+            <span style="font-weight:700; color:#475569; font-size:14px;">🎛️ Filter Tampilan:</span>
+            <a href="?tab=<?php echo $tab_aktif; ?>&gel=Semua&search=<?php echo urlencode($search); ?>" class="btn-filter <?php echo ($gel_aktif == 'Semua') ? 'active' : ''; ?>">Semua Gelombang</a>
+            <a href="?tab=<?php echo $tab_aktif; ?>&gel=1&search=<?php echo urlencode($search); ?>" class="btn-filter <?php echo ($gel_aktif == '1') ? 'active' : ''; ?>">Hanya Gelombang 1</a>
+            <a href="?tab=<?php echo $tab_aktif; ?>&gel=2&search=<?php echo urlencode($search); ?>" class="btn-filter <?php echo ($gel_aktif == '2') ? 'active' : ''; ?>">Hanya Gelombang 2</a>
+        </div>
+
+        <form action="" method="GET" class="search-box">
+            <input type="hidden" name="tab" value="<?php echo $tab_aktif; ?>">
+            <input type="hidden" name="gel" value="<?php echo $gel_aktif; ?>">
+            <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="Cari Nama / No Daftar / NISN...">
+            <button type="submit" class="btn-search">🔍 Cari</button>
+            <?php if($search != ''): ?>
+                <a href="?tab=<?php echo $tab_aktif; ?>&gel=<?php echo $gel_aktif; ?>" class="btn-reset-search">✖ Reset</a>
+            <?php endif; ?>
+        </form>
     </div>
 
     <div class="summary-grid">
@@ -162,6 +192,12 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
             <div class="stat-badge-small" style="background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc;">Lulus: <?php echo $mplb_utama; ?> Siswa</div>
         </div>
     </div>
+
+    <?php if($search != ''): ?>
+        <div style="margin: 0 20px 15px 20px; color: #4f46e5; font-weight:bold; font-size:14px;">
+            🔍 Menampilkan hasil pencarian untuk: "<?php echo htmlspecialchars($search); ?>"
+        </div>
+    <?php endif; ?>
 
     <button class="btn-toggle-jurusan <?php echo ($tab_aktif == 'akl') ? 'aktif' : ''; ?>" onclick="toggleTabel('panel_akl', this, 'akl')" style="border-left: 6px solid #10b981;">
         <h3>📁 Akuntansi dan Keuangan Lembaga (AKL)</h3>
@@ -257,11 +293,12 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                             <div class="btn-group">
                                 <a href="bukti.php?no_pendaftaran=<?php echo urlencode($row['no_pendaftaran']); ?>" target="_blank" class="btn-action bg-print-bukti">Bukti</a>
                                 <?php if($row['status_konfirmasi'] == 'Belum'): ?>
-                                    <a href="edit.php?id=<?php echo $row['id']; ?>&tab=akl" class="btn-action bg-edit">Isi Nilai Test</a>
+                                    <a href="edit.php?id=<?php echo $row['id']; ?>&tab=akl" class="btn-action bg-edit">Edit Siswa/Nilai</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Jadi&tab=akl" class="btn-action bg-success-btn" onclick="return confirm('Kunci kelulusan untuk siswa ini?')">Lulus</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=mplb" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan MPLB?')">Lempar MPLB</a>
                                     <a href="#" class="btn-action bg-danger-btn" onclick="let alasan = prompt('Masukkan alasan pembatalan untuk siswa ini:'); if(alasan === null) return false; if(alasan.trim() === '') { alert('Alasan wajib diisi untuk membatalkan!'); return false; } window.location.href='konfirmasi.php?id=<?php echo $row['id']; ?>&status=Tidak Jadi&tab=akl&alasan=' + encodeURIComponent(alasan); return false;">Tidak Jadi</a>
                                 <?php else: ?>
+                                    <a href="edit.php?id=<?php echo $row['id']; ?>&tab=akl" class="btn-action bg-edit">Edit Data/Nilai</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Reset&tab=akl" class="btn-action bg-reset-btn" onclick="return confirm('Kembalikan status siswa ke menunggu?')">Reset Status</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=mplb" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan MPLB?')">Lempar MPLB</a>
                                     <a href="hapus.php?id=<?php echo $row['id']; ?>&tab=akl" class="btn-action bg-danger-btn" onclick="return confirm('Hapus permanen dari database?')">Hapus</a>
@@ -269,7 +306,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                             </div>
                         </td>
                     </tr>
-                    <?php $rank++; }} else { echo "<tr><td colspan='7' style='text-align:center; padding:30px;'>Tidak ada data pada gelombang yang dipilih.</td></tr>"; } ?>
+                    <?php $rank++; }} else { echo "<tr><td colspan='7' style='text-align:center; padding:30px;'>Pencarian/Data tidak ditemukan pada jurusan ini.</td></tr>"; } ?>
                 </tbody>
             </table>
         </div>
@@ -368,11 +405,12 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                             <div class="btn-group">
                                 <a href="bukti.php?no_pendaftaran=<?php echo urlencode($row['no_pendaftaran']); ?>" target="_blank" class="btn-action bg-print-bukti">Bukti</a>
                                 <?php if($row['status_konfirmasi'] == 'Belum'): ?>
-                                    <a href="edit.php?id=<?php echo $row['id']; ?>&tab=mplb" class="btn-action bg-edit">Isi Nilai Test</a>
+                                    <a href="edit.php?id=<?php echo $row['id']; ?>&tab=mplb" class="btn-action bg-edit">Edit Siswa/Nilai</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Jadi&tab=mplb" class="btn-action bg-success-btn" onclick="return confirm('Kunci kelulusan untuk siswa ini?')">Lulus</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=akl" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan AKL?')">Lempar AKL</a>
                                     <a href="#" class="btn-action bg-danger-btn" onclick="let alasan = prompt('Masukkan alasan pembatalan untuk siswa ini:'); if(alasan === null) return false; if(alasan.trim() === '') { alert('Alasan wajib diisi untuk membatalkan!'); return false; } window.location.href='konfirmasi.php?id=<?php echo $row['id']; ?>&status=Tidak Jadi&tab=mplb&alasan=' + encodeURIComponent(alasan); return false;">Tidak Jadi</a>
                                 <?php else: ?>
+                                    <a href="edit.php?id=<?php echo $row['id']; ?>&tab=mplb" class="btn-action bg-edit">Edit Data/Nilai</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Reset&tab=mplb" class="btn-action bg-reset-btn" onclick="return confirm('Kembalikan status siswa ke menunggu?')">Reset Status</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=akl" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan AKL?')">Lempar AKL</a>
                                     <a href="hapus.php?id=<?php echo $row['id']; ?>&tab=mplb" class="btn-action bg-danger-btn" onclick="return confirm('Hapus permanen dari database?')">Hapus</a>
@@ -380,7 +418,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                             </div>
                         </td>
                     </tr>
-                    <?php $rank++; }} else { echo "<tr><td colspan='7' style='text-align:center; padding:30px;'>Tidak ada data pada gelombang yang dipilih.</td></tr>"; } ?>
+                    <?php $rank++; }} else { echo "<tr><td colspan='7' style='text-align:center; padding:30px;'>Pencarian/Data tidak ditemukan pada jurusan ini.</td></tr>"; } ?>
                 </tbody>
             </table>
         </div>
@@ -403,15 +441,22 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
         document.getElementById(idPanel).classList.add('terbuka');
         tombol.classList.add('aktif');
         
+        // Simpan state Tab, Gelombang, dan Search ke URL tanpa reload
         const urlParams = new URLSearchParams(window.location.search);
         const currentGel = urlParams.get('gel') || 'Semua';
-        window.history.replaceState(null, null, '?tab=' + namaTab + '&gel=' + currentGel);
+        const currentSearch = urlParams.get('search') || '';
+        
+        let newUrl = '?tab=' + namaTab + '&gel=' + currentGel;
+        if(currentSearch !== '') {
+            newUrl += '&search=' + encodeURIComponent(currentSearch);
+        }
+        
+        window.history.replaceState(null, null, newUrl);
     }
 
     function bukaModalBerkas(nama, ijazah, tka, kk, akte, ktpbapak, ktpibu, sptjm, kjp_status, tabkjp) {
         document.getElementById('mdl_nama').innerText = nama;
         
-        // Kita simpan daftar file dalam array agar bisa di-looping dengan mudah
         const berkas = [
             { nama: 'Ijazah', file: ijazah },
             { nama: 'TKA', file: tka },
@@ -432,24 +477,19 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                 `<div class="berkas-item danger"><span>❌ ${b.nama}</span></div>`;
         });
         
-        // Tambahan KJP
         if (kjp_status === 'Ya') {
             html += `<div class="berkas-item success"><span>✅ KJP</span><button onclick="tampilkanPreview('view_file.php?file=${encodeURIComponent(tabkjp)}')" class="btn-lihat">👁️ Lihat</button></div>`;
         }
         
         html += '</div>';
-        // Area untuk preview file
         html += '<div id="area-preview" style="margin-top:20px; border-top:2px solid #f1f5f9; padding-top:15px;"></div>';
         
         document.getElementById('mdl_body').innerHTML = html;
         document.getElementById('modalBerkas').style.display = 'flex';
     }
 
-    // Fungsi baru untuk memuat file ke dalam iframe di bawah modal
-    // Fungsi untuk memuat file ke dalam iframe dan menambahkan tombol download manual
     function tampilkanPreview(url) {
         const area = document.getElementById('area-preview');
-        // Ambil nama file dari URL untuk kebutuhan link download
         const fileName = decodeURIComponent(url.split('file=')[1]);
         
         area.innerHTML = `
@@ -457,15 +497,11 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                 <p style="font-size:12px; margin:0;">Pratinjau:</p>
                 <a href="${url}&download=true" target="_blank" 
                 style="background:#64748b; color:white; padding:5px 10px; border-radius:5px; text-decoration:none; font-size:11px;">
-                💾 Download
+                💾 Download Manual
                 </a>
             </div>
             <iframe src="${url}" style="width:100%; height:500px; border:1px solid #ddd; border-radius:8px;"></iframe>
         `;
-    }
-    function tplFile(lbl, file) {
-        return (file) ? `<div class="berkas-item success"><span>✅ ${lbl}</span><a href="view_file.php?file=${encodeURIComponent(file)}" target="_blank" class="btn-lihat">👁️ Lihat File (Aman)</a></div>` 
-                      : `<div class="berkas-item danger"><span>❌ ${lbl}</span></div>`;
     }
     </script>
 </body>
