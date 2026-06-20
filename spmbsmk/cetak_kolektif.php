@@ -21,7 +21,7 @@ $gel_aktif = isset($_GET['gel']) ? $_GET['gel'] : 'Semua';
 $sql_gel_filter = ($gel_aktif == 'Semua') ? "" : " AND gelombang = '$gel_aktif'";
 
 // Ambil HANYA siswa yang berstatus 'Jadi' (Lulus)
-$query = "SELECT * FROM pendaftar WHERE status_konfirmasi = 'Jadi' $sql_gel_filter ORDER BY pilihan_jurusan ASC, nama_lengkap ASC";
+$query = "SELECT * FROM pendaftar WHERE status_konfirmasi = 'LULUS' $sql_gel_filter ORDER BY pilihan_jurusan ASC, nama_lengkap ASC";
 $result = mysqli_query($conn, $query);
 
 function tgl_indo($tanggal) {

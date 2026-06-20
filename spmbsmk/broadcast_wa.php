@@ -105,18 +105,18 @@ if (isset($_POST['kirim_broadcast'])) {
             <label>Pilih Status Target</label>
             <select name="status">
                 <option value="Semua">Kirim ke SEMUA pendaftar</option>
-                <option value="LLULUS">Hanya yang LULUS</option>
+                <option value="LULUS">Hanya yang LULUS</option>
                 <option value="Tidak Jadi">Hanya yang TIDAK LULUS</option>
                 <option value="Menunggu">Hanya yang MENUNGGU</option>
             </select>
 
             <label>Isi Pesan WhatsApp</label>
             <div class="var-box">
-                <b>[NAMA], [NISN], [NO_DAFTAR], [JURUSAN], [GELOMBANG], [STATUS], [ALASAN], [LINK_BUKTI]</b>
+                <b>[NAMA], [NISN], [NO_DAFTAR], [JURUSAN],SMK [GELOMBANG], [STATUS], [ALASAN], [LINK_BUKTI]</b>
             </div>
             <textarea name="pesan" rows="10" required>Halo Bapak/Ibu Calon Wali Murid dari *[NAMA]* (NISN: [NISN]).
 
-Berdasarkan hasil seleksi Panitia SPMB SMK Permata Bunda I, kami menginformasikan bahwa status pendaftaran putra/putri Anda saat ini adalah: *[STATUS]*.[ALASAN]
+Berdasarkan hasil seleksi Panitia SPMB SMK PERMATA BUNDA I JAKARTA, kami menginformasikan bahwa status pendaftaran putra/putri Anda saat ini adalah: *[STATUS]*.[ALASAN]
 
 Jurusan: *[JURUSAN]*
 Gelombang: *[GELOMBANG]*
@@ -124,8 +124,7 @@ Gelombang: *[GELOMBANG]*
 Silakan unduh dokumen hasil seleksi pada tautan berikut:
 [LINK_BUKTI]
 
-Terima kasih.
-Panitia SPMB SMK Permata Bunda I</textarea>
+Terima kasih.</textarea>
 
             <button type="submit" name="kirim_broadcast">🚀 Mulai Kirim Pesan</button>
             <a href="admin.php" style="display:block; text-align:center; margin-top:15px; color:#64748b; text-decoration:none;">Kembali</a>

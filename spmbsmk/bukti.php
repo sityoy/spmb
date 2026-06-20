@@ -50,7 +50,7 @@ if (!isset($_SESSION['login'])) {
 
 // LOGIKA PENENTUAN STATUS KELULUSAN
 $status_db = $data['status_konfirmasi'];
-if ($status_db == 'Jadi') {
+if ($status_db == 'LULUS') {
     $status_teks = "LULUS SELEKSI";
     $status_warna_bg = "#d1fae5";
     $status_warna_teks = "#065f46";

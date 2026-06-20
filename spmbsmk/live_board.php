@@ -8,17 +8,17 @@ if ($gelombang !== 1 && $gelombang !== 2) {
     $gelombang = 1;
 }
 
-$today = date('Y-m-d');
+$today = date('Y-m-d H:i:s');
 $is_locked = false;
 $tanggal_buka = "";
 
 // Validasi Tanggal Pembukaan Live Board per Gelombang
-if ($gelombang == 1 && $today < '2026-07-06') {
+if ($gelombang == 1 && $today < '2026-06-20 20:40:00') {
     $is_locked = true;
-    $tanggal_buka = "6 Juli 2026";
-} elseif ($gelombang == 2 && $today < '2026-07-10') {
+    $tanggal_buka = "1 Juli 2026 pukul 20.40 WIB";
+} elseif ($gelombang == 2 && $today < '2026-07-10 15:00:00') {
     $is_locked = true;
-    $tanggal_buka = "10 Juli 2026";
+    $tanggal_buka = "10 Juli 2026 pukul 15.00 WIB";
 }
 
 // Set Kuota Maksimal Utama Berdasarkan Gelombang
@@ -26,8 +26,8 @@ $quota = ($gelombang == 1) ? 25 : 11;
 
 // Logika Pengurutan Peringkat Panitia
 $order_logic = "ORDER BY CASE status_konfirmasi 
-                    WHEN 'Jadi' THEN 1 
-                    WHEN 'Belum' THEN 2 
+                    WHEN 'LULUS' THEN 1 
+                    WHEN 'Menunggu' THEN 2 
                     WHEN 'Tidak Jadi' THEN 3 
                 END ASC, nilai_akhir DESC, tanggal_daftar ASC";
 
@@ -240,9 +240,9 @@ if (!$is_locked) {
                     $r = 1; 
                     if (mysqli_num_rows($result_live_akl) > 0) { 
                         while ($row = mysqli_fetch_assoc($result_live_akl)) { 
-                            if ($row['status_konfirmasi'] == 'Jadi') {
+                            if ($row['status_konfirmasi'] == 'LULUS') {
                                 $cl_row = 'rank-utama';
-                                $badge = "<br><span class='badge-status-live live-utama'>✓ FIX UTAMA</span>";
+                                $badge = "<br><span class='badge-status-live live-utama'>✓ LULUS</span>";
                             } elseif ($row['status_konfirmasi'] == 'Tidak Jadi') {
                                 $cl_row = 'rank-cadangan text-muted-drop';
                                 $badge = "<br><span class='badge-status-live live-drop'>BATAL</span>";
@@ -338,9 +338,9 @@ if (!$is_locked) {
                     $r = 1; 
                     if (mysqli_num_rows($result_live_mplb) > 0) { 
                         while ($row = mysqli_fetch_assoc($result_live_mplb)) { 
-                            if ($row['status_konfirmasi'] == 'Jadi') {
+                            if ($row['status_konfirmasi'] == 'LULUS') {
                                 $cl_row = 'rank-utama';
-                                $badge = "<br><span class='badge-status-live live-utama'>✓ FIX UTAMA</span>";
+                                $badge = "<br><span class='badge-status-live live-utama'>✓ LULUS</span>";
                             } elseif ($row['status_konfirmasi'] == 'Tidak Jadi') {
                                 $cl_row = 'rank-cadangan text-muted-drop';
                                 $badge = "<br><span class='badge-status-live live-drop'>BATAL</span>";
