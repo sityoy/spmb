@@ -40,16 +40,16 @@ function hitungKuota($jurusan, $status, $gel, $conn) {
 
 // Menghitung statistik (Statistik tetap berdasarkan gelombang, mengabaikan filter pencarian agar angka total tetap akurat)
 $tot_akl_all = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as total FROM pendaftar WHERE pilihan_jurusan = 'Akuntansi dan Keuangan Lembaga' $sql_gel_filter"))['total'];
-$akl_utama    = hitungKuota('Akuntansi dan Keuangan Lembaga', 'Jadi', $gel_aktif, $conn);
+$akl_utama    = hitungKuota('Akuntansi dan Keuangan Lembaga', 'LULUS', $gel_aktif, $conn);
 
 $tot_mplb_all = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as total FROM pendaftar WHERE pilihan_jurusan = 'Manajemen Perkantoran dan Layanan Bisnis' $sql_gel_filter"))['total'];
-$mplb_utama    = hitungKuota('Manajemen Perkantoran dan Layanan Bisnis', 'Jadi', $gel_aktif, $conn);
+$mplb_utama    = hitungKuota('Manajemen Perkantoran dan Layanan Bisnis', 'LULUS', $gel_aktif, $conn);
 
 $tot_all = $tot_akl_all + $tot_mplb_all;
 
 $order_logic = "ORDER BY CASE status_konfirmasi 
-                    WHEN 'Jadi' THEN 1 
-                    WHEN 'Belum' THEN 2 
+                    WHEN 'LULUS' THEN 1 
+                    WHEN 'MENUNGGU' THEN 2 
                     WHEN 'Tidak Jadi' THEN 3 
                 END ASC, nilai_akhir_sql DESC, tanggal_daftar ASC";
 
@@ -223,7 +223,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                     $rank = 1; 
                     if (mysqli_num_rows($result_akl) > 0) { 
                         while($row = mysqli_fetch_assoc($result_akl)) { 
-                            if ($row['status_konfirmasi'] == 'Jadi') {
+                            if ($row['status_konfirmasi'] == 'LULUS') {
                                 $zb = "<span class='status-badge badge-locked-utama'>🔒 Lulus</span>";
                             } elseif ($row['status_konfirmasi'] == 'Tidak Jadi') {
                                 $zb = "<span class='status-badge badge-forced-cadangan'>❌ Tidak Jadi</span>";
@@ -292,9 +292,9 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                         <td>
                             <div class="btn-group">
                                 <a href="bukti.php?no_pendaftaran=<?php echo urlencode($row['no_pendaftaran']); ?>" target="_blank" class="btn-action bg-print-bukti">Bukti</a>
-                                <?php if($row['status_konfirmasi'] == 'Belum'): ?>
+                                <?php if($row['status_konfirmasi'] == 'Menunggu'): ?>
                                     <a href="edit.php?id=<?php echo $row['id']; ?>&tab=akl" class="btn-action bg-edit">Edit Siswa/Nilai</a>
-                                    <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Jadi&tab=akl" class="btn-action bg-success-btn" onclick="return confirm('Kunci kelulusan untuk siswa ini?')">Lulus</a>
+                                    <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=LULUS&tab=akl" class="btn-action bg-success-btn" onclick="return confirm('Kunci kelulusan untuk siswa ini?')">Lulus</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=mplb" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan MPLB?')">Lempar MPLB</a>
                                     <a href="#" class="btn-action bg-danger-btn" onclick="let alasan = prompt('Masukkan alasan pembatalan untuk siswa ini:'); if(alasan === null) return false; if(alasan.trim() === '') { alert('Alasan wajib diisi untuk membatalkan!'); return false; } window.location.href='konfirmasi.php?id=<?php echo $row['id']; ?>&status=Tidak Jadi&tab=akl&alasan=' + encodeURIComponent(alasan); return false;">Tidak Jadi</a>
                                 <?php else: ?>
@@ -336,7 +336,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                     $rank = 1; 
                     if (mysqli_num_rows($result_mplb) > 0) { 
                         while ($row = mysqli_fetch_assoc($result_mplb)) { 
-                            if ($row['status_konfirmasi'] == 'Jadi') {
+                            if ($row['status_konfirmasi'] == 'LULUS') {
                                 $zb = "<span class='status-badge badge-locked-utama'>🔒 Lulus</span>";
                             } elseif ($row['status_konfirmasi'] == 'Tidak Jadi') {
                                 $zb = "<span class='status-badge badge-forced-cadangan'>❌ Tidak Jadi</span>";
@@ -404,9 +404,9 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                         <td>
                             <div class="btn-group">
                                 <a href="bukti.php?no_pendaftaran=<?php echo urlencode($row['no_pendaftaran']); ?>" target="_blank" class="btn-action bg-print-bukti">Bukti</a>
-                                <?php if($row['status_konfirmasi'] == 'Belum'): ?>
+                                <?php if($row['status_konfirmasi'] == 'Menunggu'): ?>
                                     <a href="edit.php?id=<?php echo $row['id']; ?>&tab=mplb" class="btn-action bg-edit">Edit Siswa/Nilai</a>
-                                    <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Jadi&tab=mplb" class="btn-action bg-success-btn" onclick="return confirm('Kunci kelulusan untuk siswa ini?')">Lulus</a>
+                                    <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=LULUS&tab=mplb" class="btn-action bg-success-btn" onclick="return confirm('Kunci kelulusan untuk siswa ini?')">Lulus</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=akl" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan AKL?')">Lempar AKL</a>
                                     <a href="#" class="btn-action bg-danger-btn" onclick="let alasan = prompt('Masukkan alasan pembatalan untuk siswa ini:'); if(alasan === null) return false; if(alasan.trim() === '') { alert('Alasan wajib diisi untuk membatalkan!'); return false; } window.location.href='konfirmasi.php?id=<?php echo $row['id']; ?>&status=Tidak Jadi&tab=mplb&alasan=' + encodeURIComponent(alasan); return false;">Tidak Jadi</a>
                                 <?php else: ?>

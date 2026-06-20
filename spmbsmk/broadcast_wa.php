@@ -6,13 +6,12 @@ include 'koneksi.php';
 // ==========================================
 // KONFIGURASI FONNTE API
 // ==========================================
-$fonnte_token = "CAdEvmkiZFe3Hm6xEybT"; // <--- GANTI DENGAN TOKEN FONNTE ANDA
+$fonnte_token = "CAdEvmkiZFe3Hm6xEybT"; 
 
 $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
 $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']);
 
 if (isset($_POST['kirim_broadcast'])) {
-    // Cegah timeout jika data ratusan
     set_time_limit(0); 
 
     $gel = mysqli_real_escape_string($conn, $_POST['gelombang']);
@@ -32,11 +31,13 @@ if (isset($_POST['kirim_broadcast'])) {
         if (substr($no_hp, 0, 1) == '0') { $no_wa = '62' . substr($no_hp, 1); } else { $no_wa = $no_hp; }
 
         if (strlen($no_wa) > 9) {
-            // Replace Variabel Pesan
+            // Pembuatan Link Bukti
             $link_bukti = $domain_web . "/bukti.php?no_pendaftaran=" . urlencode($row['no_pendaftaran']);
+            
+            // Variabel yang disesuaikan dengan database pendaftar
             $pesan_fix = str_replace(
-                ['[NAMA]', '[NO_DAFTAR]', '[NISN]', '[JURUSAN]', '[LINK_BUKTI]'],
-                [$row['nama_lengkap'], $row['no_pendaftaran'], $row['nisn'], $row['pilihan_jurusan'], $link_bukti],
+                ['[NAMA]', '[NO_DAFTAR]', '[NISN]', '[JURUSAN]', '[GELOMBANG]', '[STATUS]','[ALASAN]', '[LINK_BUKTI]'],
+                [$row['nama_lengkap'], $row['no_pendaftaran'], $row['nisn'], $row['pilihan_jurusan'], $row['gelombang'], $row['status_konfirmasi'], $row['alasan_pembatalan'], $link_bukti],
                 $pesan_mentah
             );
 
@@ -45,16 +46,11 @@ if (isset($_POST['kirim_broadcast'])) {
             curl_setopt_array($curl, array(
                 CURLOPT_URL => 'https://api.fonnte.com/send',
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 0,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POST => true,
                 CURLOPT_POSTFIELDS => array(
                     'target' => $no_wa,
                     'message' => $pesan_fix,
-                    'delay' => '2' // Delay 2 detik agar WA tidak diblokir
+                    'delay' => '2' 
                 ),
                 CURLOPT_HTTPHEADER => array(
                     "Authorization: $fonnte_token"
@@ -62,8 +58,15 @@ if (isset($_POST['kirim_broadcast'])) {
             ));
 
             $response = curl_exec($curl);
-            if (curl_errno($curl)) { $gagal++; } else { $sukses++; }
+            // Tambahan: Cek apakah pengiriman sukses berdasarkan respon Fonnte
+            $res_data = json_decode($response, true);
+            if (isset($res_data['status']) && $res_data['status'] == true) { 
+                $sukses++; 
+            } else { 
+                $gagal++; 
+            }
             curl_close($curl);
+            sleep(2); 
         } else {
             $gagal++;
         }
@@ -109,11 +112,11 @@ if (isset($_POST['kirim_broadcast'])) {
 
             <label>Isi Pesan WhatsApp</label>
             <div class="var-box">
-                Gunakan kode ini di dalam pesan (akan berubah sesuai data siswa):<br>
-                <b>[NAMA]</b>, <b>[NISN]</b>, <b>[NO_DAFTAR]</b>, <b>[JURUSAN]</b>, <b>[LINK_BUKTI]</b>
+                Gunakan kode ini di dalam pesan:<br>
+                <b>[NAMA]</b>, <b>[NISN]</b>, <b>[NO_DAFTAR]</b>, <b>[JURUSAN]</b>, <b>[GELOMBANG]</b>, <b>[STATUS]</b>,<b>[ALASAN]</b>, <b>[LINK_BUKTI]</b>
             </div>
             <textarea name="pesan" rows="10" required>Halo Bapak/Ibu Calon Wali Murid dari *[NAMA]* (NISN: [NISN]).
-Berdasarkan hasil seleksi Panitia SPMB SMK Permata Bunda I, kami menginformasikan bahwa putra/putri Anda dinyatakan LULUS pada jurusan [JURUSAN].
+Berdasarkan hasil seleksi Panitia SPMB SMK Permata Bunda I, kami menginformasikan bahwa putra/putri Anda dinyatakan *[STATUS]* *[ALASAN]* untuk jurusan *[JURUSAN]* pada *Gelombang : [GELOMBANG]*.
 
 Silakan unduh Surat Keputusan / Bukti Kelulusan pada tautan berikut:
 [LINK_BUKTI]

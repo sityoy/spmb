@@ -42,7 +42,7 @@ if (isset($_GET['id']) && isset($_GET['status'])) {
         
     } elseif ($status_request == 'Reset') {
         // 3. Aksi Reset Status ke Menunggu Antrian (Alasan otomatis dikosongkan lagi)
-        $query = "UPDATE pendaftar SET status_konfirmasi = 'Belum', alasan_pembatalan = '' WHERE id = '$id'";
+        $query = "UPDATE pendaftar SET status_konfirmasi = 'Menunggu', alasan_pembatalan = '' WHERE id = '$id'";
         $execute = mysqli_query($conn, $query);
         $msg = "Status kelulusan siswa berhasil di-reset.";
         
@@ -65,7 +65,7 @@ if (isset($_GET['id']) && isset($_GET['status'])) {
             }
             
             // Update jurusan baru dan reset status konfirmasinya ke 'Belum'
-            $query = "UPDATE pendaftar SET pilihan_jurusan = '$jurusan_baru', status_konfirmasi = 'Belum', alasan_pembatalan = '' WHERE id = '$id'";
+            $query = "UPDATE pendaftar SET pilihan_jurusan = '$jurusan_baru', status_konfirmasi = 'Menunggu', alasan_pembatalan = '' WHERE id = '$id'";
             $execute = mysqli_query($conn, $query);
             $msg = "Berhasil melempar $nama ke jurusan $nama_jurusan_baru!";
         }
