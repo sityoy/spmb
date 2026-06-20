@@ -2,14 +2,14 @@
 // 1. Cek Status Session
 $ch1 = curl_init('http://127.0.0.1:3000/api/sessions');
 curl_setopt($ch1, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch1, CURLOPT_USERPWD, "smkpb1:Smkpb123");
+curl_setopt($ch1, CURLOPT_USERPWD, "admin:admin123"); // <-- UBAH DI SINI
 $status_res = curl_exec($ch1);
 curl_close($ch1);
 
 // 2. Tarik QR
 $ch2 = curl_init('http://127.0.0.1:3000/api/sessions/default/auth/qr');
 curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch2, CURLOPT_USERPWD, "smkpb1:Smkpb123");
+curl_setopt($ch2, CURLOPT_USERPWD, "admin:admin123"); // <-- UBAH DI SINI
 curl_setopt($ch2, CURLOPT_HTTPHEADER, ['Accept: application/json']);
 $qr_res = curl_exec($ch2);
 curl_close($ch2);

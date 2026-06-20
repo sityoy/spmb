@@ -4,19 +4,15 @@ if (!isset($_SESSION['login'])) { header("Location: login.php"); exit; }
 include 'koneksi.php';
 
 // ==========================================
-// KONFIGURASI WAHA API FINAL
+// KONFIGURASI FONNTE API
 // ==========================================
-$waha_url = 'http://157.10.253.87:3000/api/sendText'; 
-$waha_session = 'default'; 
-
-$waha_username = 'smkpb1';
-$waha_password = 'Smkpb@#1';
-$credentials = base64_encode($waha_username . ':' . $waha_password);
+$fonnte_token = "CAdEvmkiZFe3Hm6xEybT"; // <--- GANTI DENGAN TOKEN FONNTE ANDA
 
 $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
 $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']);
 
 if (isset($_POST['kirim_broadcast'])) {
+    // Cegah timeout jika data ratusan
     set_time_limit(0); 
 
     $gel = mysqli_real_escape_string($conn, $_POST['gelombang']);
@@ -33,13 +29,10 @@ if (isset($_POST['kirim_broadcast'])) {
 
     while ($row = mysqli_fetch_assoc($query)) {
         $no_hp = preg_replace('/[^0-9]/', '', $row['no_whatsapp']);
-        if (substr($no_hp, 0, 1) == '0') { 
-            $no_wa = '62' . substr($no_hp, 1); 
-        } else { 
-            $no_wa = $no_hp; 
-        }
+        if (substr($no_hp, 0, 1) == '0') { $no_wa = '62' . substr($no_hp, 1); } else { $no_wa = $no_hp; }
 
         if (strlen($no_wa) > 9) {
+            // Replace Variabel Pesan
             $link_bukti = $domain_web . "/bukti.php?no_pendaftaran=" . urlencode($row['no_pendaftaran']);
             $pesan_fix = str_replace(
                 ['[NAMA]', '[NO_DAFTAR]', '[NISN]', '[JURUSAN]', '[LINK_BUKTI]'],
@@ -47,15 +40,10 @@ if (isset($_POST['kirim_broadcast'])) {
                 $pesan_mentah
             );
 
+            // cURL ke API Fonnte
             $curl = curl_init();
-            $payload = json_encode(array(
-                "chatId" => $no_wa . "@c.us", 
-                "text" => $pesan_fix,
-                "session" => $waha_session
-            ));
-
             curl_setopt_array($curl, array(
-                CURLOPT_URL => $waha_url,
+                CURLOPT_URL => 'https://api.fonnte.com/send',
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
@@ -63,34 +51,19 @@ if (isset($_POST['kirim_broadcast'])) {
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
                 CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => $payload,
+                CURLOPT_POSTFIELDS => array(
+                    'target' => $no_wa,
+                    'message' => $pesan_fix,
+                    'delay' => '2' // Delay 2 detik agar WA tidak diblokir
+                ),
                 CURLOPT_HTTPHEADER => array(
-                    'Content-Type: application/json',
-                    'Accept: application/json',
-                    'Authorization: Basic ' . $credentials 
+                    "Authorization: $fonnte_token"
                 ),
             ));
 
             $response = curl_exec($curl);
-            $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-            $error_asli = curl_error($curl); 
-            
-            // Debugging pembongkar error
-            if ($http_code != 200 && $http_code != 201) {
-                echo "<h3>❌ BROADCAST GAGAL!</h3>";
-                echo "DEBUG ERROR HTTP CODE: <b>$http_code</b> <br>";
-                echo "ALASAN GAGAL DARI SERVER: <b>$error_asli</b> <br>";
-                echo "RESPONSE WAHA: $response";
-                exit;
-            }
-            
-            if (!curl_errno($curl) && ($http_code == 200 || $http_code == 201)) { 
-                $sukses++; 
-            } else { 
-                $gagal++; 
-            }
+            if (curl_errno($curl)) { $gagal++; } else { $sukses++; }
             curl_close($curl);
-            sleep(3); 
         } else {
             $gagal++;
         }
@@ -116,8 +89,8 @@ if (isset($_POST['kirim_broadcast'])) {
 </head>
 <body>
     <div class="box">
-        <h2>📢 Siaran WhatsApp Massal (Lokal)</h2>
-        <form method="POST" onsubmit="return confirm('Anda yakin akan mengirim pesan ini ke semua target? Proses ini butuh waktu beberapa saat karena ada jeda anti-banned.')">
+        <h2>📢 Siaran WhatsApp Massal</h2>
+        <form method="POST" onsubmit="return confirm('Anda yakin akan mengirim pesan ini ke semua target? Proses ini butuh waktu beberapa saat.')">
             
             <label>Pilih Gelombang Target</label>
             <select name="gelombang">
@@ -140,8 +113,7 @@ if (isset($_POST['kirim_broadcast'])) {
                 <b>[NAMA]</b>, <b>[NISN]</b>, <b>[NO_DAFTAR]</b>, <b>[JURUSAN]</b>, <b>[LINK_BUKTI]</b>
             </div>
             <textarea name="pesan" rows="10" required>Halo Bapak/Ibu Calon Wali Murid dari *[NAMA]* (NISN: [NISN]).
-
-Berdasarkan hasil seleksi Panitia SPMB SMK Bahagia, kami menginformasikan bahwa putra/putri Anda dinyatakan LULUS pada jurusan [JURUSAN].
+Berdasarkan hasil seleksi Panitia SPMB SMK Permata Bunda I, kami menginformasikan bahwa putra/putri Anda dinyatakan LULUS pada jurusan [JURUSAN].
 
 Silakan unduh Surat Keputusan / Bukti Kelulusan pada tautan berikut:
 [LINK_BUKTI]
