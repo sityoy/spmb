@@ -13,9 +13,9 @@ $is_locked = false;
 $tanggal_buka = "";
 
 // Validasi Tanggal Pembukaan Live Board per Gelombang
-if ($gelombang == 1 && $today < '2026-07-01') {
+if ($gelombang == 1 && $today < '2026-07-06') {
     $is_locked = true;
-    $tanggal_buka = "1 Juli 2026";
+    $tanggal_buka = "6 Juli 2026";
 } elseif ($gelombang == 2 && $today < '2026-07-10') {
     $is_locked = true;
     $tanggal_buka = "10 Juli 2026";

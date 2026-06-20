@@ -109,7 +109,7 @@ if (isset($_POST['daftar'])) {
         }
     }
 
-    $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn = '$nisn' OR no_kk = '$no_kk' OR no_whatsapp = '$wa'";
+    $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn = '$nisn' OR no_kk = '$no_kk'";
     $hasil_cek    = mysqli_query($conn, $cek_duplikat);
 
     // ANTI-HACK LOKASI (Server Side)
@@ -127,7 +127,7 @@ if (isset($_POST['daftar'])) {
         $dist = rad2deg($dist);
         $jarak_meter = $dist * 60 * 1.1515 * 1.609344 * 1000;
 
-        if ($jarak_meter > 350) { $jarak_tidak_valid = true; }
+        if ($jarak_meter > 50000) { $jarak_tidak_valid = true; }
     } else {
         $jarak_tidak_valid = true; 
     }
@@ -139,7 +139,7 @@ if (isset($_POST['daftar'])) {
     } elseif ($jarak_tidak_valid) {
         $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Lokasi Anda tidak valid atau berada di luar area sekolah. Silakan lakukan Verifikasi Lokasi.</div>";
     } elseif (mysqli_num_rows($hasil_cek) > 0) {
-        $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Maaf, NISN, Nomor Seri Ijazah, Nomor KK, atau Nomor WhatsApp Anda sudah pernah terdaftar di sistem kami.</div>";
+        $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Maaf, NISN, Nomor Seri Ijazah, atau Nomor KK Anda sudah pernah terdaftar di sistem kami.</div>";
     } elseif ($cek_kuota_submit >= $max_kuota) {
         $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Maaf, Kuota untuk Jurusan tersebut pada " . $gelombang_aktif . " sudah penuh.</div>";
     } elseif (substr($no_kk, 0, 2) !== '31' || strlen($no_kk) !== 16) {
@@ -192,7 +192,7 @@ if (isset($_POST['daftar'])) {
             $no_pendaftaran = "SPMB-SMKPB1-" . date('Y') . "-" . rand(1000, 9999);
             
             $query = "INSERT INTO pendaftar (no_pendaftaran, nama_lengkap, tempat_lahir, tanggal_lahir, nisn, no_ijazah, asal_sekolah, riwayat_penyakit, no_whatsapp, pilihan_jurusan, nilai_skl, nilai_tka, nilai_test, file_ijazah, file_tka, file_kk, file_akte, no_kk, status_konfirmasi, file_ktp_bapak, file_ktp_ibu, file_sptjm, status_kjp, no_rek_kjp, file_tabungan_kjp, gelombang) 
-                      VALUES ('$no_pendaftaran', '$nama', '$tmpl_lahir', '$tgl_lahir', '$nisn', '$no_ijazah', '$asal', '$riwayat_penyakit', '$wa', '$jurusan', '$skl', '$tka', '0.00', '$nama_ijazah', '$nama_tka', '$nama_kk', '$nama_akte', '$no_kk', 'Belum', '$nama_ktp_bapak', '$nama_ktp_ibu', '$nama_sptjm', '$status_kjp', '$no_rek_kjp', '$nama_tabungan_kjp', '$gelombang_id')";
+                      VALUES ('$no_pendaftaran', '$nama', '$tmpl_lahir', '$tgl_lahir', '$nisn', '$no_ijazah', '$asal', '$riwayat_penyakit', '$wa', '$jurusan', '$skl', '$tka', '0.00', '$nama_ijazah', '$nama_tka', '$nama_kk', '$nama_akte', '$no_kk', 'MENUNGGU', '$nama_ktp_bapak', '$nama_ktp_ibu', '$nama_sptjm', '$status_kjp', '$no_rek_kjp', '$nama_tabungan_kjp', '$gelombang_id')";
 
             if (mysqli_query($conn, $query)) {
                 // Tambahkan baris ini agar langsung lolos verifikasi NISN
@@ -577,7 +577,7 @@ function cekLokasi() {
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             const jarak = R * c;
 
-            if (jarak <= 350) {
+            if (jarak <= 50000) {
                 document.getElementById('info-lokasi').innerHTML = "✅ Lokasi Valid (Jarak: " + jarak.toFixed(2) + "m)";
                 document.getElementById('info-lokasi').className = "status-valid";
                 document.getElementById('lat').value = userLat;
@@ -585,7 +585,7 @@ function cekLokasi() {
                 isLokasiValid = true; 
                 cekSemuaValidasi();   
             } else {
-                alert("Pendaftaran Gagal!\nAnda berada di luar radius 350m dari sekolah. Jarak Anda: " + Math.round(jarak) + " meter.");
+                alert("Pendaftaran Gagal!\nAnda berada di luar radius 50000m dari sekolah. Jarak Anda: " + Math.round(jarak) + " meter.");
                 document.getElementById('info-lokasi').innerHTML = "❌ Lokasi Terlalu Jauh";
                 document.getElementById('info-lokasi').className = "status-invalid";
                 isLokasiValid = false;

@@ -28,9 +28,9 @@ if (isset($_GET['id']) && isset($_GET['status'])) {
     // TANGKAP ALASAN DARI JAVASCRIPT PROMPT (Jika Ada)
     $alasan = isset($_GET['alasan']) ? mysqli_real_escape_string($conn, trim($_GET['alasan'])) : '';
 
-    if ($status_request == 'Jadi') {
+    if ($status_request == 'LULUS') {
         // 1. Aksi Kunci Kelulusan (Lulus)
-        $query = "UPDATE pendaftar SET status_konfirmasi = 'Jadi' WHERE id = '$id'";
+        $query = "UPDATE pendaftar SET status_konfirmasi = 'LULUS' WHERE id = '$id'";
         $execute = mysqli_query($conn, $query);
         $msg = "Status siswa berhasil diperbarui menjadi LULUS!";
         
@@ -42,7 +42,7 @@ if (isset($_GET['id']) && isset($_GET['status'])) {
         
     } elseif ($status_request == 'Reset') {
         // 3. Aksi Reset Status ke Menunggu Antrian (Alasan otomatis dikosongkan lagi)
-        $query = "UPDATE pendaftar SET status_konfirmasi = 'Belum', alasan_pembatalan = '' WHERE id = '$id'";
+        $query = "UPDATE pendaftar SET status_konfirmasi = 'Menunggu', alasan_pembatalan = '' WHERE id = '$id'";
         $execute = mysqli_query($conn, $query);
         $msg = "Status kelulusan siswa berhasil di-reset.";
         
@@ -65,7 +65,7 @@ if (isset($_GET['id']) && isset($_GET['status'])) {
             }
             
             // Update jurusan baru dan reset status konfirmasinya ke 'Belum'
-            $query = "UPDATE pendaftar SET pilihan_jurusan = '$jurusan_baru', status_konfirmasi = 'Belum', alasan_pembatalan = '' WHERE id = '$id'";
+            $query = "UPDATE pendaftar SET pilihan_jurusan = '$jurusan_baru', status_konfirmasi = 'Menunggu', alasan_pembatalan = '' WHERE id = '$id'";
             $execute = mysqli_query($conn, $query);
             $msg = "Berhasil melempar $nama ke jurusan $nama_jurusan_baru!";
         }
