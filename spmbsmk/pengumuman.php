@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('Asia/Jakarta');
 include 'koneksi.php';
 
 $pesan = "";
@@ -40,7 +41,6 @@ if (isset($_POST['cek'])) {
   if (empty($nisn)) {
     $pesan = "<div class='alert alert-danger'>Silakan masukkan NISN Anda terlebih dahulu!</div>";
   } else {
-    // Cari data pendaftar berdasarkan NISN
     $query_siswa = "SELECT * FROM pendaftar WHERE nisn = '$nisn'";
     $result_siswa = mysqli_query($conn, $query_siswa);
 
@@ -50,17 +50,17 @@ if (isset($_POST['cek'])) {
       $jurusan_siswa  = $siswa_ditemukan['pilihan_jurusan'];
       $id_pendaftar  = $siswa_ditemukan['id'];
       
-      $today = date('Y-m-d H:i:s');
+      $pengaturan = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM pengaturan WHERE id = 1"));
+      $sekarang = date('Y-m-d H:i:s');
       $boleh_buka = false;
       $tgl_buka_pesan = "";
 
-      // Validasi tanggal pembukaan pengumuman berdasarkan Gelombang pendaftar
       if ($gelombang_siswa == 1) {
-        if ($today >= '2026-06-19 20:59:00') { $boleh_buka = true; }
-        else { $tgl_buka_pesan = "1 Juli 2026 15:00 WIB"; }
+        if ($sekarang >= $pengaturan['buka_gel_1']) { $boleh_buka = true; }
+        else { $tgl_buka_pesan = tgl_indo_pengumuman($pengaturan['buka_gel_1']); }
       } elseif ($gelombang_siswa == 2) {
-        if ($today >= '2026-07-10') { $boleh_buka = true; }
-        else { $tgl_buka_pesan = "10 Juli 2026 15:00 WIB"; }
+        if ($sekarang >= $pengaturan['buka_gel_2']) { $boleh_buka = true; }
+        else { $tgl_buka_pesan = tgl_indo_pengumuman($pengaturan['buka_gel_2']); }
       }
 
       if (!$boleh_buka) {
@@ -68,7 +68,6 @@ if (isset($_POST['cek'])) {
       } else {
         $quota = ($gelombang_siswa == 1) ? 25 : 11;
 
-        // Hitung posisi peringkat siswa tersinkronisasi penuh dengan Live Board
         $query_rank = "SELECT id, ((nilai_skl + nilai_tka) / 2) as nilai_akhir 
                FROM pendaftar 
                WHERE pilihan_jurusan = '$jurusan_siswa' AND gelombang = '$gelombang_siswa'
@@ -89,7 +88,7 @@ if (isset($_POST['cek'])) {
 
         $tampil_hasil = true;
         $nilai_akhir = ($siswa_ditemukan['nilai_skl'] + $siswa_ditemukan['nilai_tka']) / 2;
-        $singkatan_jurusan = ($jurusan_siswa == "Akuntansi dan Keuangan Lembaga : Manajemen Perkantoran dan Layanan Bisnis") ? "Akuntnasi dan Keuangan Lembaga" : "Manajemen Perkantoran dan Layanan Bisnis";
+        $singkatan_jurusan = ($jurusan_siswa == "Akuntansi dan Keuangan Lembaga") ? "Akuntansi dan Keuangan Lembaga" : "Manajemen Perkantoran dan Layanan Bisnis";
       }
     } else {
       $pesan = "<div class='alert alert-danger'><b>Data Tidak Ditemukan!</b><br>NISN yang Anda masukkan tidak terdaftar dalam sistem kelulusan SPMB.</div>";
@@ -115,6 +114,7 @@ if (isset($_POST['cek'])) {
     .alert { padding: 12px 15px; border-radius: 8px; font-size: 13.5px; margin-bottom: 15px; line-height: 1.5; }
     .alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
     .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+    .alert-luar { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
     
     .btn { width: 100%; padding: 12px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 15px; cursor: pointer; }
     .btn:hover { background: #4338ca; }
@@ -169,7 +169,7 @@ if (isset($_POST['cek'])) {
         <?php elseif ($siswa_ditemukan['status_konfirmasi'] == 'Tidak Jadi'): ?>
           <div class="alert alert-danger" style="margin: 5px 0 0 0; font-weight: bold; background: #f3f4f6; color: #4b5563; border-color: #e5e7eb;">❌ STATUS: BATAL / MENGUNDURKAN DIRI</div>
         <?php else: ?>
-          <div class="alert alert-danger" style="margin: 5px 0 0 0; font-weight: bold; background: #fff7ed; color: #c2410c; border-color: #fed7aa;">⏳ STATUS: ANTRIAN (URUTAN KE-<?php echo ($peringkat_siswa - $quota); ?>)</div>
+          <div class="alert alert-luar" style="margin: 5px 0 0 0; font-weight: bold;">❌ STATUS: DI LUAR KUOTA</div>
         <?php endif; ?>
 
         <a href="bukti.php?no_pendaftaran=<?php echo $siswa_ditemukan['no_pendaftaran']; ?>" target="_blank" class="btn-reprint">🖨️ Cetak Bukti Pendaftaran</a>

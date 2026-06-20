@@ -299,8 +299,13 @@ if (isset($_POST['daftar'])) {
 
 <div class="container">
     <div class="header">
+        <img src="logo/logopb.jpg" alt="Logo Yayasan Permata Bunda" style="max-height: 97px; width: auto; margin-bottom: 15px;">
+        <img src="logo/logopemda.png" alt="Logo Pemda DKI" style="max-height: 100px; width: auto; margin-bottom: 15px;">
+        <img src="logo/logosmkpb.png" alt="Logo SMK PB1" style="max-height: 110px; width: auto; margin-bottom: 15px;">
         <h2>PORTAL SPMB ONLINE</h2>
         <h4>SMKS PERMATA BUNDA I JAKARTA</h4>
+        <h4>Sekolah Swasta Gratis</h4>
+
         <span class="tag-school">Tahun Ajaran 2026/2027</span>
         <span class="tag-gelombang">🔥 <?php echo $gelombang_aktif; ?></span>
     </div>
