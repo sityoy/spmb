@@ -18,6 +18,7 @@ if (isset($_POST['kirim_broadcast'])) {
     $status = mysqli_real_escape_string($conn, $_POST['status']);
     $pesan_mentah = $_POST['pesan'];
 
+    // Filter SQL
     $sql_gel = ($gel == 'Semua') ? "" : " AND gelombang = '$gel'";
     $sql_status = ($status == 'Semua') ? "" : " AND status_konfirmasi = '$status'";
 
@@ -27,17 +28,19 @@ if (isset($_POST['kirim_broadcast'])) {
     $gagal = 0;
 
     while ($row = mysqli_fetch_assoc($query)) {
+        // Pembersihan Nomor WhatsApp
         $no_hp = preg_replace('/[^0-9]/', '', $row['no_whatsapp']);
-        if (substr($no_hp, 0, 1) == '0') { $no_wa = '62' . substr($no_hp, 1); } else { $no_wa = $no_hp; }
+        $no_wa = (substr($no_hp, 0, 1) == '0') ? '62' . substr($no_hp, 1) : $no_hp;
 
         if (strlen($no_wa) > 9) {
-            // Pembuatan Link Bukti
             $link_bukti = $domain_web . "/bukti.php?no_pendaftaran=" . urlencode($row['no_pendaftaran']);
             
-            // Variabel yang disesuaikan dengan database pendaftar
+            // Perbaikan Logika: Jika alasan kosong, jangan tampilkan labelnya
+            $alasan = !empty($row['alasan_pembatalan']) ? "\nAlasan: " . $row['alasan_pembatalan'] : "";
+            
             $pesan_fix = str_replace(
-                ['[NAMA]', '[NO_DAFTAR]', '[NISN]', '[JURUSAN]', '[GELOMBANG]', '[STATUS]','[ALASAN]', '[LINK_BUKTI]'],
-                [$row['nama_lengkap'], $row['no_pendaftaran'], $row['nisn'], $row['pilihan_jurusan'], $row['gelombang'], $row['status_konfirmasi'], $row['alasan_pembatalan'], $link_bukti],
+                ['[NAMA]', '[NO_DAFTAR]', '[NISN]', '[JURUSAN]', '[GELOMBANG]', '[STATUS]', '[ALASAN]', '[LINK_BUKTI]'],
+                [$row['nama_lengkap'], $row['no_pendaftaran'], $row['nisn'], $row['pilihan_jurusan'], $row['gelombang'], $row['status_konfirmasi'], $alasan, $link_bukti],
                 $pesan_mentah
             );
 
@@ -52,14 +55,12 @@ if (isset($_POST['kirim_broadcast'])) {
                     'message' => $pesan_fix,
                     'delay' => '2' 
                 ),
-                CURLOPT_HTTPHEADER => array(
-                    "Authorization: $fonnte_token"
-                ),
+                CURLOPT_HTTPHEADER => array("Authorization: $fonnte_token"),
             ));
 
             $response = curl_exec($curl);
-            // Tambahan: Cek apakah pengiriman sukses berdasarkan respon Fonnte
             $res_data = json_decode($response, true);
+            
             if (isset($res_data['status']) && $res_data['status'] == true) { 
                 $sukses++; 
             } else { 
@@ -71,7 +72,7 @@ if (isset($_POST['kirim_broadcast'])) {
             $gagal++;
         }
     }
-    echo "<script>alert('Broadcast Selesai! Sukses: $sukses, Gagal: $gagal'); window.location='admin.php';</script>";
+    echo "<script>alert('Selesai! Berhasil: $sukses, Gagal: $gagal'); window.location='admin.php';</script>";
 }
 ?>
 
@@ -93,8 +94,7 @@ if (isset($_POST['kirim_broadcast'])) {
 <body>
     <div class="box">
         <h2>📢 Siaran WhatsApp Massal</h2>
-        <form method="POST" onsubmit="return confirm('Anda yakin akan mengirim pesan ini ke semua target? Proses ini butuh waktu beberapa saat.')">
-            
+        <form method="POST" onsubmit="return confirm('Anda yakin akan mengirim pesan ini?')">
             <label>Pilih Gelombang Target</label>
             <select name="gelombang">
                 <option value="Semua">Semua Gelombang</option>
@@ -102,29 +102,33 @@ if (isset($_POST['kirim_broadcast'])) {
                 <option value="2">Gelombang 2</option>
             </select>
 
-            <label>Pilih Status Kelulusan Target</label>
+            <label>Pilih Status Target</label>
             <select name="status">
                 <option value="Semua">Kirim ke SEMUA pendaftar</option>
-                <option value="Jadi">Hanya yang LULUS</option>
+                <option value="LLULUS">Hanya yang LULUS</option>
                 <option value="Tidak Jadi">Hanya yang TIDAK LULUS</option>
-                <option value="Belum">Hanya yang MENUNGGU (Belum Test)</option>
+                <option value="Menunggu">Hanya yang MENUNGGU</option>
             </select>
 
             <label>Isi Pesan WhatsApp</label>
             <div class="var-box">
-                Gunakan kode ini di dalam pesan:<br>
-                <b>[NAMA]</b>, <b>[NISN]</b>, <b>[NO_DAFTAR]</b>, <b>[JURUSAN]</b>, <b>[GELOMBANG]</b>, <b>[STATUS]</b>,<b>[ALASAN]</b>, <b>[LINK_BUKTI]</b>
+                <b>[NAMA], [NISN], [NO_DAFTAR], [JURUSAN], [GELOMBANG], [STATUS], [ALASAN], [LINK_BUKTI]</b>
             </div>
             <textarea name="pesan" rows="10" required>Halo Bapak/Ibu Calon Wali Murid dari *[NAMA]* (NISN: [NISN]).
-Berdasarkan hasil seleksi Panitia SPMB SMK Permata Bunda I, kami menginformasikan bahwa putra/putri Anda dinyatakan *[STATUS]* *[ALASAN]* untuk jurusan *[JURUSAN]* pada *Gelombang : [GELOMBANG]*.
 
-Silakan unduh Surat Keputusan / Bukti Kelulusan pada tautan berikut:
+Berdasarkan hasil seleksi Panitia SPMB SMK Permata Bunda I, kami menginformasikan bahwa status pendaftaran putra/putri Anda saat ini adalah: *[STATUS]*.[ALASAN]
+
+Jurusan: *[JURUSAN]*
+Gelombang: *[GELOMBANG]*
+
+Silakan unduh dokumen hasil seleksi pada tautan berikut:
 [LINK_BUKTI]
 
-Terima kasih.</textarea>
+Terima kasih.
+Panitia SPMB SMK Permata Bunda I</textarea>
 
-            <button type="submit" name="kirim_broadcast" onclick="this.innerHTML='Mengirim... Jangan Tutup Halaman Ini'">🚀 Mulai Kirim Pesan</button>
-            <a href="admin.php" style="display:block; text-align:center; margin-top:15px; color:#64748b; text-decoration:none;">Batalkan</a>
+            <button type="submit" name="kirim_broadcast">🚀 Mulai Kirim Pesan</button>
+            <a href="admin.php" style="display:block; text-align:center; margin-top:15px; color:#64748b; text-decoration:none;">Kembali</a>
         </form>
     </div>
 </body>

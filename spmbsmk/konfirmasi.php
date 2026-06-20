@@ -28,9 +28,9 @@ if (isset($_GET['id']) && isset($_GET['status'])) {
     // TANGKAP ALASAN DARI JAVASCRIPT PROMPT (Jika Ada)
     $alasan = isset($_GET['alasan']) ? mysqli_real_escape_string($conn, trim($_GET['alasan'])) : '';
 
-    if ($status_request == 'Jadi') {
+    if ($status_request == 'LULUS') {
         // 1. Aksi Kunci Kelulusan (Lulus)
-        $query = "UPDATE pendaftar SET status_konfirmasi = 'Jadi' WHERE id = '$id'";
+        $query = "UPDATE pendaftar SET status_konfirmasi = 'LULUS' WHERE id = '$id'";
         $execute = mysqli_query($conn, $query);
         $msg = "Status siswa berhasil diperbarui menjadi LULUS!";
         
