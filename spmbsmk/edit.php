@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Validasi range input (Ditambah pengecualian angka 0 jika belum test)
-    if (($nilai_test < 75 && $nilai_test != 0) || $nilai_test > 100) {
+    if (($nilai_test < 0 && $nilai_test != 0) || $nilai_test > 100) {
         echo "<script>alert('Nilai Uji Kejuruan (Test Panitia) harus 0 (Belum Ujian) atau berada di rentang 75 - 100!');</script>";
     } elseif ($nilai_skl < 0 || $nilai_skl > 100 || $nilai_tka < 0 || $nilai_tka > 100) {
         echo "<script>alert('Nilai SKL dan TKA harus berada di rentang 0 - 100!');</script>";
@@ -184,7 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         value="<?php echo $data['nilai_test']; ?>" 
                         oninput="if(this.value > 100) this.value = 100; if(this.value.includes('.')){ let p=this.value.split('.'); if(p[1].length>2) this.value=p[0]+'.'+p[1].substring(0,2); }" required>
                     <small style="color:#64748b; font-size:11px; margin-top:6px; display:block; line-height:1.4;">
-                        *Isi <b>0</b> jika belum ujian. Jika sudah, rentang nilai <b>75.00 - 100.00</b>.<br>
+                        *Isi <b>0</b> jika belum ujian. Jika sudah, rentang nilai <b>00.00 - 100.00</b>.<br>
                         *Gunakan tanda <b>titik (.)</b> untuk angka desimal.
                     </small>
                 </div>
