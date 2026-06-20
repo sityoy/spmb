@@ -4,21 +4,19 @@ if (!isset($_SESSION['login'])) { header("Location: login.php"); exit; }
 include 'koneksi.php';
 
 // ==========================================
-// KONFIGURASI WAHA API (VPS LOKAL)
+// KONFIGURASI WAHA API FINAL
 // ==========================================
-$waha_url = 'http://157.10.253.87:3000/api/sendText'; // Endpoint Lokal VPS Anda
-$waha_session = 'default'; // Nama session yang Anda buat tadi
+$waha_url = 'http://157.10.253.87:3000/api/sendText'; 
+$waha_session = 'default'; 
 
-// --- PERBAIKAN OTENTIKASI ---
 $waha_username = 'smkpb1';
-$waha_password = 'Smkpn@#1';
+$waha_password = 'Smkpb@#1';
 $credentials = base64_encode($waha_username . ':' . $waha_password);
 
 $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
 $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']);
 
 if (isset($_POST['kirim_broadcast'])) {
-    // Cegah timeout jika ngirim ratusan WA
     set_time_limit(0); 
 
     $gel = mysqli_real_escape_string($conn, $_POST['gelombang']);
@@ -34,7 +32,6 @@ if (isset($_POST['kirim_broadcast'])) {
     $gagal = 0;
 
     while ($row = mysqli_fetch_assoc($query)) {
-        // Bersihkan nomor WA
         $no_hp = preg_replace('/[^0-9]/', '', $row['no_whatsapp']);
         if (substr($no_hp, 0, 1) == '0') { 
             $no_wa = '62' . substr($no_hp, 1); 
@@ -43,7 +40,6 @@ if (isset($_POST['kirim_broadcast'])) {
         }
 
         if (strlen($no_wa) > 9) {
-            // Replace Variabel Pesan
             $link_bukti = $domain_web . "/bukti.php?no_pendaftaran=" . urlencode($row['no_pendaftaran']);
             $pesan_fix = str_replace(
                 ['[NAMA]', '[NO_DAFTAR]', '[NISN]', '[JURUSAN]', '[LINK_BUKTI]'],
@@ -51,14 +47,9 @@ if (isset($_POST['kirim_broadcast'])) {
                 $pesan_mentah
             );
 
-            // ==========================================
-            // PROSES PENGIRIMAN KE API WAHA (VPS)
-            // ==========================================
             $curl = curl_init();
-            
-            // Format Data JSON yang diminta oleh WAHA
             $payload = json_encode(array(
-                "chatId" => $no_wa . "@c.us", // WAHA mewajibkan @c.us di belakang nomor
+                "chatId" => $no_wa . "@c.us", 
                 "text" => $pesan_fix,
                 "session" => $waha_session
             ));
@@ -76,22 +67,29 @@ if (isset($_POST['kirim_broadcast'])) {
                 CURLOPT_HTTPHEADER => array(
                     'Content-Type: application/json',
                     'Accept: application/json',
-                    'Authorization: Basic ' . $credentials // <--- KUNCI OTENTIKASI YANG BENAR
+                    'Authorization: Basic ' . $credentials 
                 ),
             ));
 
             $response = curl_exec($curl);
             $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+            $error_asli = curl_error($curl); 
             
-            // Cek sukses atau gagal
+            // Debugging pembongkar error
+            if ($http_code != 200 && $http_code != 201) {
+                echo "<h3>❌ BROADCAST GAGAL!</h3>";
+                echo "DEBUG ERROR HTTP CODE: <b>$http_code</b> <br>";
+                echo "ALASAN GAGAL DARI SERVER: <b>$error_asli</b> <br>";
+                echo "RESPONSE WAHA: $response";
+                exit;
+            }
+            
             if (!curl_errno($curl) && ($http_code == 200 || $http_code == 201)) { 
                 $sukses++; 
             } else { 
                 $gagal++; 
             }
             curl_close($curl);
-            
-            // Jeda 3 detik per pesan agar WA tidak mendeteksi sebagai spam robot
             sleep(3); 
         } else {
             $gagal++;
