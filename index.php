@@ -8,6 +8,8 @@ date_default_timezone_set('Asia/Jakarta');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SMKS PERMATA BUNDA I JAKARTA - Official Website</title>
+    <link rel="icon" type="image/x-icon" href="spmbsmk/logo/logosmkpb.png">
+
     <style>
         :root {
             --primary: #4f46e5;
