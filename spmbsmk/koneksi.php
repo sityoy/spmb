@@ -3,7 +3,7 @@
 $host = "localhost";
 $user = "root"; 
 $pass = "Smkpb@#1"; 
-$db   = "db_spmbsmkpb1";
+$db   = "uj_spmb";
 
 // Gunakan @ untuk menyembunyikan detail error dari user umum
 $conn = @mysqli_connect($host, $user, $pass, $db);

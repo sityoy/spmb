@@ -303,6 +303,7 @@ date_default_timezone_set('Asia/Jakarta');
                 <a href="#">Beranda</a>
                 <a href="#jurusan">Kompetensi</a>
                 <a href="#alur">Alur PPDB</a>
+                <a href="spmbsmk/admin.php">Admin</a>
                 <a href="spmbsmk/index.php" class="btn-spmb-nav">Portal SPMB Online 📝</a>
             </div>
         </div>
