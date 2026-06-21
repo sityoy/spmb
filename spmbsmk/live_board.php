@@ -379,4 +379,3 @@ document.getElementById('modalNilai').addEventListener('click', function(e) {
 });
 </script>
 </body>
-</html>
