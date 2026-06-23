@@ -141,9 +141,11 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
         </div>
         <div style="display:flex; gap:10px; flex-wrap: wrap;">
             <a href="cetak_nilai_kolektif.php?gel=<?php echo $gel_aktif; ?>" target="_blank" class="btn-action bg-edit" style="background: #0ea5e9;">📊 Cetak Rekap Nilai</a>
-            <a href="broadcast_wa.php" class="btn-action" style="background: #25D366; color: white;">📢 Broadcast WA</a>
+            <!-- <a href="broadcast_wa.php" class="btn-action" style="background: #25D366; color: white;">📢 Broadcast WA</a> -->
             <a href="cetak_kolektif.php" target="_blank" class="btn-action bg-kolektif">📑 Cetak Bukti Kolektif</a>
             <a href="formulir_offline.php" target="_blank" class="btn-action bg-offline">🖨️ Cetak Form Offline</a>
+            <a href="cetak_pakta_kolektif.php?tab=<?php echo $tab_aktif; ?>&gel=<?php echo $gel_aktif; ?>" target="_blank" class="btn-action" style="background: #eab308; color: #fff;">🖨️ Cetak Pakta Kolektif</a>
+            
             <button onclick="document.getElementById('modalJadwal').style.display='flex'" class="btn-action bg-edit" style="background:#8b5cf6;">⚙️ Setting Jadwal</button>
             <a href="logout.php" class="btn-action bg-danger-btn" onclick="return confirm('Keluar sistem?')">Logout</a>
         </div>
@@ -192,8 +194,15 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
     <?php endif; ?>
 
     <button class="btn-toggle-jurusan <?php echo ($tab_aktif == 'akl') ? 'aktif' : ''; ?>" onclick="toggleTabel('panel_akl', this, 'akl')" style="border-left: 6px solid #10b981;">
+
         <h3>📁 Akuntansi dan Keuangan Lembaga (AKL)</h3>
-        <div><span class="badge-count" style="background: #d1fae5; color: #065f46;">Lulus: <?php echo $akl_utama; ?> / <?php echo $tot_akl_all; ?></span></div>
+        <div>
+            <a href="konfirmasi_kolektif.php?jurusan=Akuntansi%20dan%20Keuangan%20Lembaga&gel=<?php echo $gel_aktif; ?>&status=LULUS" 
+            class="btn-action bg-success-btn" onclick="return confirm('Yakin meluluskan semua pendaftar AKL <?php echo $label_gelombang; ?>?')">Luluskan Semua</a>
+            <a href="konfirmasi_kolektif.php?jurusan=Akuntansi%20dan%20Keuangan%20Lembaga&gel=<?php echo $gel_aktif; ?>&status=Menunggu" 
+            class="btn-action bg-reset-btn" onclick="return confirm('Yakin reset status semua pendaftar AKL <?php echo $label_gelombang; ?>?')">Reset Semua</a>
+            <span class="badge-count" style="background: #d1fae5; color: #065f46;">Lulus: <?php echo $akl_utama; ?> / <?php echo $tot_akl_all; ?></span>
+        </div>
     </button>
 
     <div id="panel_akl" class="panel-tabel <?php echo ($tab_aktif == 'akl') ? 'terbuka' : ''; ?>">
@@ -282,6 +291,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                         </td>
                         <td>
                             <div class="btn-group">
+                                
                                 <a href="bukti.php?no_pendaftaran=<?php echo urlencode($row['no_pendaftaran']); ?>" target="_blank" class="btn-action bg-print-bukti">Bukti</a>
                                 <?php if($row['status_konfirmasi'] == 'Menunggu'): ?>
                                     <a href="edit.php?id=<?php echo $row['id']; ?>&tab=akl" class="btn-action bg-edit">Edit Siswa/Nilai</a>
@@ -302,10 +312,16 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
             </table>
         </div>
     </div>
-
+   
     <button class="btn-toggle-jurusan <?php echo ($tab_aktif == 'mplb') ? 'aktif' : ''; ?>" onclick="toggleTabel('panel_mplb', this, 'mplb')" style="border-left: 6px solid #0284c7;">
         <h3>📁 Manajemen Perkantoran dan Layanan Bisnis (MPLB)</h3>
-        <div><span class="badge-count" style="background: #e0f2fe; color: #0369a1;">Lulus: <?php echo $mplb_utama; ?> / <?php echo $tot_mplb_all; ?></span></div>
+    <div>
+        <a href="konfirmasi_kolektif.php?jurusan=Manajemen%20Perkantoran%20dan%20Layanan%20Bisnis&gel=<?php echo $gel_aktif; ?>&status=LULUS" 
+           class="btn-action bg-success-btn" onclick="return confirm('Yakin meluluskan semua pendaftar MPLB <?php echo $label_gelombang; ?>?')">Luluskan Semua</a>
+        <a href="konfirmasi_kolektif.php?jurusan=Manajemen%20Perkantoran%20dan%20Layanan%20Bisnis&gel=<?php echo $gel_aktif; ?>&status=Menunggu" 
+           class="btn-action bg-reset-btn" onclick="return confirm('Yakin reset status semua pendaftar MPLB <?php echo $label_gelombang; ?>?')">Reset Semua</a>
+        <span class="badge-count" style="background: #d1fae5; color: #065f46;">Lulus: <?php echo $mplb_utama; ?> / <?php echo $tot_mplb_all; ?></span>
+    </div>
     </button>
 
     <div id="panel_mplb" class="panel-tabel <?php echo ($tab_aktif == 'mplb') ? 'terbuka' : ''; ?>">
