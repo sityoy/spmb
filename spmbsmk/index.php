@@ -1,46 +1,28 @@
 <?php 
 session_start();
-// ini_set('display_errors', 1);
-// error_reporting(E_ALL);
 include 'koneksi.php';
 
 // ===================================================================
-// 1. PENGATURAN ZONA WAKTU & DETEKSI GELOMBANG OTOMATIS (ASIA/JAKARTA)
+// 1. PENGATURAN KONTROL SISTEM DINAMIS BERBASIS DATABASE (ADMIN PANEL)
 // ===================================================================
 date_default_timezone_set('Asia/Jakarta');
-$waktu_sekarang = time();
+
 if (!empty($_POST['website_checker'])) {
     die("Akses ditolak (Bot detected).");
 }
-// TIMESTAMPS JADWAL GELOMBANG 1 (15 Juni 2026 s.d 30 Juni 2026)
-$buka_g1  = strtotime('2026-06-15 06:00:00');
-$tutup_g1 = strtotime('2026-06-30 23:59:59');
 
-// TIMESTAMPS JADWAL GELOMBANG 2 (08 Juli 2026 s.d 09 Juli 2026)
-$buka_g2  = strtotime('2026-07-08 06:00:00');
-$tutup_g2 = strtotime('2026-07-09 23:59:59');
+// Tarik konfigurasi terpusat dari database pengaturan
+$pengaturan = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM pengaturan WHERE id = 1"));
 
-$pendaftaran_buka = false;
-$gelombang_aktif  = "Pendaftaran Ditutup";
-$gelombang_id     = 0;
+$gelombang_id     = (int)$pengaturan['gelombang_aktif'];
+$gelombang_aktif  = "Gelombang " . $gelombang_id;
+$max_kuota        = ($gelombang_id == 2) ? (int)$pengaturan['max_kuota_g2'] : (int)$pengaturan['max_kuota_g1'];
 
-if ($waktu_sekarang >= $buka_g1 && $waktu_sekarang <= $tutup_g1) {
-    $pendaftaran_buka = true;
-    $gelombang_aktif  = "Gelombang 1";
-    $gelombang_id     = 1;
-} elseif ($waktu_sekarang >= $buka_g2 && $waktu_sekarang <= $tutup_g2) {
-    $pendaftaran_buka = true;
-    $gelombang_aktif  = "Gelombang 2";
-    $gelombang_id     = 2;
-}
+// Menentukan status pendaftaran terbuka secara global
+$pendaftaran_buka = ($pengaturan['status_pendaftaran'] === 'buka');
 
 // ===================================================================
-// 2. REGULASI BATAS KUOTA SISTEM (DINAMIS PER GELOMBANG)
-// ===================================================================
-$max_kuota = ($gelombang_id == 2) ? 11 : 25;
-
-// ===================================================================
-// 3. HITUNG KUOTA REAL-TIME DARI DATABASE BERDASARKAN GELOMBANG AKTIF
+// 2. HITUNG DATA PENDAFTAR REAL-TIME UNTUK KONTROL KUNCI KUOTA MASAL
 // ===================================================================
 function hitungPendaftarGelombang($jurusan, $id_gel, $conn) {
     $q = mysqli_query($conn, "SELECT COUNT(*) as total FROM pendaftar WHERE pilihan_jurusan = '$jurusan' AND gelombang = '$id_gel'");
@@ -50,14 +32,20 @@ function hitungPendaftarGelombang($jurusan, $id_gel, $conn) {
 $total_akl  = hitungPendaftarGelombang('Akuntansi dan Keuangan Lembaga', $gelombang_id, $conn);
 $total_mplb = hitungPendaftarGelombang('Manajemen Perkantoran dan Layanan Bisnis', $gelombang_id, $conn);
 
+// KONDISI OTOMATIS: Jika kuota AKL dan MPLB sudah penuh semuanya, paksa sistem berhenti menerima pendaftar baru
+$kuota_habis_total = ($total_akl >= $max_kuota && $total_mplb >= $max_kuota);
+if ($kuota_habis_total) {
+    $pendaftaran_buka = false;
+}
+
 $pesan = "";
 
 // ===================================================================
-// 4. PROSES PENDAFTARAN (Dijalankan saat tombol Daftar diklik)
+// 3. PROSES SUBMISSION DATA FORMULIR PENDAFTARAN
 // ===================================================================
 if (isset($_POST['daftar'])) {
     if (!$pendaftaran_buka) {
-        die("Akses Ditolak: Pendaftaran saat ini sedang ditutup.");
+        die("Akses Ditolak: Pendaftaran saat ini sedang ditutup atau kuota sudah terpenuhi maksimal.");
     }
 
     $nama       = htmlspecialchars(strtoupper(trim(mysqli_real_escape_string($conn, $_POST['nama_lengkap']))));
@@ -76,7 +64,7 @@ if (isset($_POST['daftar'])) {
     if (empty($riwayat_penyakit)) { $riwayat_penyakit = "Tidak Ada"; }
     
     $status_kjp = trim(mysqli_real_escape_string($conn, $_POST['status_kjp']));
-    $no_rek_kjp = ""; // WAJIB TAMBAHKAN INI AGAR TIDAK ERROR
+    $no_rek_kjp = ""; 
     if ($status_kjp == 'Ya') {
         $no_rek_kjp = trim(mysqli_real_escape_string($conn, $_POST['no_rek_kjp']));
         if (strlen($no_rek_kjp) < 5 || strlen($no_rek_kjp) > 15) {
@@ -84,6 +72,7 @@ if (isset($_POST['daftar'])) {
         }
     }
 
+    // Validasi kuota double-check server side tepat sebelum menyimpan ke database
     $cek_kuota_submit = hitungPendaftarGelombang($jurusan, $gelombang_id, $conn);
     $tanggal_lahir_obj = new DateTime($tgl_lahir);
     $hari_ini_obj      = new DateTime(); 
@@ -118,8 +107,8 @@ if (isset($_POST['daftar'])) {
         $lat = (float)$_POST['lat'];
         $long = (float)$_POST['long'];
         
-        $latSekolah = -6.157462; // GANTI DENGAN LATITUDE SEKOLAH
-        $longSekolah = 106.8035761; // GANTI DENGAN LONGITUDE SEKOLAH
+        $latSekolah = -6.157462; 
+        $longSekolah = 106.8035761; 
         
         $theta = $long - $longSekolah;
         $dist = sin(deg2rad($lat)) * sin(deg2rad($latSekolah)) +  cos(deg2rad($lat)) * cos(deg2rad($latSekolah)) * cos(deg2rad($theta));
@@ -195,9 +184,7 @@ if (isset($_POST['daftar'])) {
                       VALUES ('$no_pendaftaran', '$nama', '$tmpl_lahir', '$tgl_lahir', '$nisn', '$no_ijazah', '$asal', '$riwayat_penyakit', '$wa', '$jurusan', '$skl', '$tka', '0.00', '$nama_ijazah', '$nama_tka', '$nama_kk', '$nama_akte', '$no_kk', 'Menunggu', '$nama_ktp_bapak', '$nama_ktp_ibu', '$nama_sptjm', '$status_kjp', '$no_rek_kjp', '$nama_tabungan_kjp', '$gelombang_id')";
 
             if (mysqli_query($conn, $query)) {
-                // Tambahkan baris ini agar langsung lolos verifikasi NISN
                 $_SESSION['izin_akses_bukti_' . $no_pendaftaran] = true;
-                
                 header("Location: bukti.php?no_pendaftaran=" . urlencode(trim($no_pendaftaran)));
                 exit;
             } else {
@@ -267,29 +254,19 @@ if (isset($_POST['daftar'])) {
         .status-invalid { background: #fef2f2; border-color: #ef4444; color: #b91c1c; }
 
         .kjp-wrapper-box { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 20px; border-radius: 12px; margin-top: 15px; display: none; }
-        
         #info-lokasi { font-size: 12px; margin-top: 10px; font-weight: bold; text-align: center; padding: 8px; border-radius: 6px;}
 
-        /* =================================================================
-           RESPONSIVE MOBILE (UI/UX KHUSUS HP)
-           ================================================================= */
         @media (max-width: 640px) { 
             body { padding: 10px; }
             .container { padding: 20px 15px; border-radius: 12px; }
             .header h2 { font-size: 20px; }
             .header h4 { font-size: 14px; }
             .tag-school, .tag-gelombang { display: block; margin: 5px auto; width: max-content; margin-left: auto; margin-right: auto;}
-            
             .main-nav { flex-direction: column; gap: 10px; padding-bottom: 15px; }
             .nav-link { width: 100%; box-sizing: border-box; }
-            
             .grid-form { grid-template-columns: 1fr; gap: 15px; } 
             .full-width { grid-column: span 1; }
-            
-            /* Mengubah Input Berdampingan menjadi Atas-Bawah di HP */
             .input-group-badge, .input-group-badge-date { grid-template-columns: 1fr; gap: 8px; }
-            
-            /* Mencegah layar iPhone otomatis Zoom saat mengetik */
             .form-group input, .form-group select { font-size: 16px; padding: 12px 14px; }
             .status-badge-neutral { padding: 12px 0; }
         }
@@ -303,7 +280,7 @@ if (isset($_POST['daftar'])) {
         <img src="logo/logopemda.png" alt="Logo Pemda DKI" style="max-height: 100px; width: auto; margin-bottom: 15px;">
         <img src="logo/logosmkpb.png" alt="Logo SMK PB1" style="max-height: 110px; width: auto; margin-bottom: 15px;">
         <h2>PORTAL SPMB ONLINE</h2>
-        <h4>SMKS PERMATA BUNDA I JAKARTA</h4>
+        <h2>SMKS PERMATA BUNDA I JAKARTA</h2>
         <h4>Sekolah Swasta Gratis</h4>
 
         <span class="tag-school">Tahun Ajaran 2026/2027</span>
@@ -319,11 +296,17 @@ if (isset($_POST['daftar'])) {
 
     <?php if (!$pendaftaran_buka): ?>
         <div class="time-alert-box">
-            ⚠️ Mohon Maaf, Sistem SPMB Online Saat Ini Sedang Ditutup.<br>
-            <span style="font-size:13px; font-weight:500; color:#9a3412; display:block; margin-top:8px;">
-                <b>Gelombang 1:</b> 15 Juni 2026 (06:00) - 30 Juni 2026 (23.59) <br>
-                <b>Gelombang 2:</b> 08 Juli 2026 (06.00) - 09 Juli 2026 (23.59)
-            </span>
+            <?php if ($kuota_habis_total): ?>
+                ⚠️ Mohon Maaf, Pendaftaran <?php echo $gelombang_aktif; ?> Ditutup Lebih Awal Karena Kuota Tampung Sekolah Sudah Terisi Penuh.<br>
+                <span style="font-size:13px; font-weight:500; color:#9a3412; display:block; margin-top:8px;">
+                    Terima kasih atas antusiasme besar seluruh calon peserta didik baru di SMKS Permata Bunda I Jakarta.
+                </span>
+            <?php else: ?>
+                ⚠️ Mohon Maaf, Sistem Penerimaan Siswa Baru Saat Ini Sedang Ditutup Sementara Oleh Panitia Admin.<br>
+                <span style="font-size:13px; font-weight:500; color:#9a3412; display:block; margin-top:8px;">
+                    Silakan hubungi pihak panitia sekolah untuk informasi jadwal pembukaan jalur berikutnya.
+                </span>
+            <?php endif; ?>
         </div>
     <?php else: ?>
         <form action="" method="POST" enctype="multipart/form-data">
@@ -400,14 +383,14 @@ if (isset($_POST['daftar'])) {
                     <select name="pilihan_jurusan" required>
                         <option value="">-- Silahkan Pilih Jurusan --</option>
                         
-                        <option value="Akuntansi dan Keuangan Lembaga" <?php if($total_akl >= $max_kuota) echo 'disabled'; ?>>
-                            Akuntansi dan Keuangan Lembaga (AKL) - Kuota Terisi: <?php echo $total_akl; ?>/<?php echo $max_kuota; ?> 
-                            <?php if($total_akl >= $max_kuota) echo '(PENUH)'; ?>
+                        <option value="Akuntansi dan Keuangan Lembaga" <?php if($total_akl >= $max_kuota) echo 'disabled style="color: #94a3b8; background: #f1f5f9;"'; ?>>
+                            Akuntansi dan Keuangan Lembaga (AKL) - Kuota: <?php echo $total_akl; ?>/<?php echo $max_kuota; ?> 
+                            <?php if($total_akl >= $max_kuota) echo ' [PENUH]'; ?>
                         </option>
                         
-                        <option value="Manajemen Perkantoran dan Layanan Bisnis" <?php if($total_mplb >= $max_kuota) echo 'disabled'; ?>>
-                            Manajamen Perkantoran dan Layanan Bisnis (MPLB) - Kuota Terisi: <?php echo $total_mplb; ?>/<?php echo $max_kuota; ?>
-                            <?php if($total_mplb >= $max_kuota) echo '(PENUH)'; ?>
+                        <option value="Manajemen Perkantoran dan Layanan Bisnis" <?php if($total_mplb >= $max_kuota) echo 'disabled style="color: #94a3b8; background: #f1f5f9;"'; ?>>
+                            Manajamen Perkantoran dan Layanan Bisnis (MPLB) - Kuota: <?php echo $total_mplb; ?>/<?php echo $max_kuota; ?>
+                            <?php if($total_mplb >= $max_kuota) echo ' [PENUH]'; ?>
                         </option>
                     </select>
                 </div>
@@ -550,7 +533,6 @@ if (isset($_POST['daftar'])) {
 </div>
 
 <script>
-// Variabel Juri untuk memastikan SEMUA syarat terpenuhi sebelum submit
 let isLokasiValid = false;
 let isNisnValid = false;
 let isUmurValid = false;
@@ -693,7 +675,6 @@ function jalankanValidasiSistemKomplit() {
     cekSemuaValidasi(); 
 }
 
-// Auto-Save Form (Sangat Berguna di HP)
 document.addEventListener("DOMContentLoaded", function() {
     const formElements = document.querySelectorAll("input:not([type='file']), select");
     formElements.forEach(el => {

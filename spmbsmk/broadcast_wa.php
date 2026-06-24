@@ -6,7 +6,7 @@ include 'koneksi.php';
 // ==========================================
 // KONFIGURASI FONNTE API
 // ==========================================
-$fonnte_token = "CAdEvmkiZFe3Hm6xEybT"; 
+$fonnte_token = "AabZp5e5JT61dZpckh8c"; 
 
 $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
 $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']);

@@ -20,12 +20,25 @@ $_GET['gel'] = isset($_GET['gel']) ? preg_replace('/[^a-zA-Z0-9]/', '', $_GET['g
 
 include 'koneksi.php';
 
-// Proses Update Jadwal
+// Proses Update Jadwal & Pengaturan Kontrol Sistem masal
 if (isset($_POST['simpan_jadwal'])) {
     $gel1 = mysqli_real_escape_string($conn, $_POST['buka_gel_1']);
     $gel2 = mysqli_real_escape_string($conn, $_POST['buka_gel_2']);
-    mysqli_query($conn, "UPDATE pengaturan SET buka_gel_1 = '$gel1', buka_gel_2 = '$gel2' WHERE id = 1");
-    echo "<script>alert('Jadwal pengumuman berhasil diupdate!'); window.location='admin.php';</script>";
+    $gel_aktif_form = mysqli_real_escape_string($conn, $_POST['gelombang_aktif']);
+    $status_form = mysqli_real_escape_string($conn, $_POST['status_pendaftaran']);
+    $q1 = mysqli_real_escape_string($conn, $_POST['max_kuota_g1']);
+    $q2 = mysqli_real_escape_string($conn, $_POST['max_kuota_g2']);
+
+    mysqli_query($conn, "UPDATE pengaturan SET 
+        buka_gel_1 = '$gel1', 
+        buka_gel_2 = '$gel2', 
+        gelombang_aktif = '$gel_aktif_form', 
+        status_pendaftaran = '$status_form', 
+        max_kuota_g1 = '$q1', 
+        max_kuota_g2 = '$q2' 
+        WHERE id = 1");
+        
+    echo "<script>alert('Seluruh konfigurasi sistem berhasil diupdate!'); window.location='admin.php';</script>";
 }
 // Ambil data jadwal saat ini
 $pengaturan = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM pengaturan WHERE id = 1"));
@@ -141,7 +154,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
         </div>
         <div style="display:flex; gap:10px; flex-wrap: wrap;">
             <a href="cetak_nilai_kolektif.php?gel=<?php echo $gel_aktif; ?>" target="_blank" class="btn-action bg-edit" style="background: #0ea5e9;">📊 Cetak Rekap Nilai</a>
-            <!-- <a href="broadcast_wa.php" class="btn-action" style="background: #25D366; color: white;">📢 Broadcast WA</a> -->
+            <a href="broadcast_wa.php" class="btn-action" style="background: #25D366; color: white;">📢 Broadcast WA</a>
             <a href="cetak_kolektif.php" target="_blank" class="btn-action bg-kolektif">📑 Cetak Bukti Kolektif</a>
             <a href="formulir_offline.php" target="_blank" class="btn-action bg-offline">🖨️ Cetak Form Offline</a>
             <a href="cetak_pakta_kolektif.php?tab=<?php echo $tab_aktif; ?>&gel=<?php echo $gel_aktif; ?>" target="_blank" class="btn-action" style="background: #eab308; color: #fff;">🖨️ Cetak Pakta Kolektif</a>
@@ -450,23 +463,50 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
     }
     ?>
     <div id="modalJadwal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-content" style="max-width: 450px;">
             <div class="modal-header">
-                <h3 style="margin:0;">⚙️ Setting Jadwal Pengumuman</h3>
+                <h3 style="margin:0;">⚙️ Kontrol Sistem Pusat</h3>
                 <button onclick="document.getElementById('modalJadwal').style.display='none'" style="border:none; background:#f1f5f9; padding:8px 12px; border-radius:6px; cursor:pointer; font-weight:bold;">Tutup ✕</button>
             </div>
             <form method="POST">
                 <div style="margin-bottom: 15px;">
-                    <label style="font-weight:bold; font-size:13px; color:#475569; display:block; margin-bottom:5px;">Jadwal Buka Gelombang 1</label>
-                    <div style="font-size:12px; color:#10b981; margin-bottom:8px; font-weight:600;">Saat ini: <?php echo format_tgl_indo($pengaturan['buka_gel_1']); ?></div>
-                    <input type="datetime-local" name="buka_gel_1" value="<?php echo date('Y-m-d\TH:i', strtotime($pengaturan['buka_gel_1'])); ?>" required style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px;">
+                    <label style="font-weight:bold; font-size:13px; color:#475569; display:block; margin-bottom:5px;">Status Pendaftaran Global</label>
+                    <select name="status_pendaftaran" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-weight: bold;">
+                        <option value="buka" <?php echo ($pengaturan['status_pendaftaran'] == 'buka') ? 'selected' : ''; ?>>🟢 BUKA (Pendaftaran Aktif)</option>
+                        <option value="tutup" <?php echo ($pengaturan['status_pendaftaran'] == 'tutup') ? 'selected' : ''; ?>>🔴 TUTUP (Kunci Akses Form)</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight:bold; font-size:13px; color:#475569; display:block; margin-bottom:5px;">Jalur Gelombang yang Dibuka</label>
+                    <select name="gelombang_aktif" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-weight: bold;">
+                        <option value="1" <?php echo ($pengaturan['gelombang_aktif'] == 1) ? 'selected' : ''; ?>>Jalur Gelombang 1</option>
+                        <option value="2" <?php echo ($pengaturan['gelombang_aktif'] == 2) ? 'selected' : ''; ?>>Jalur Gelombang 2</option>
+                    </select>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                    <div>
+                        <label style="font-weight:bold; font-size:12px; color:#475569; display:block; margin-bottom:5px;">Maks Kuota G1</label>
+                        <input type="number" name="max_kuota_g1" value="<?php echo $pengaturan['max_kuota_g1']; ?>" required style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="font-weight:bold; font-size:12px; color:#475569; display:block; margin-bottom:5px;">Maks Kuota G2</label>
+                        <input type="number" name="max_kuota_g2" value="<?php echo $pengaturan['max_kuota_g2']; ?>" required style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; box-sizing: border-box;">
+                    </div>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 15px 0;">
+
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight:bold; font-size:13px; color:#475569; display:block; margin-bottom:5px;">Jadwal Pengumuman Gelombang 1</label>
+                    <input type="datetime-local" name="buka_gel_1" value="<?php echo date('Y-m-d\TH:i', strtotime($pengaturan['buka_gel_1'])); ?>" required style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; box-sizing: border-box;">
                 </div>
                 <div style="margin-bottom: 20px;">
-                    <label style="font-weight:bold; font-size:13px; color:#475569; display:block; margin-bottom:5px;">Jadwal Buka Gelombang 2</label>
-                    <div style="font-size:12px; color:#10b981; margin-bottom:8px; font-weight:600;">Saat ini: <?php echo format_tgl_indo($pengaturan['buka_gel_2']); ?></div>
-                    <input type="datetime-local" name="buka_gel_2" value="<?php echo date('Y-m-d\TH:i', strtotime($pengaturan['buka_gel_2'])); ?>" required style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px;">
+                    <label style="font-weight:bold; font-size:13px; color:#475569; display:block; margin-bottom:5px;">Jadwal Pengumuman Gelombang 2</label>
+                    <input type="datetime-local" name="buka_gel_2" value="<?php echo date('Y-m-d\TH:i', strtotime($pengaturan['buka_gel_2'])); ?>" required style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; box-sizing: border-box;">
                 </div>
-                <button type="submit" name="simpan_jadwal" style="width:100%; padding:12px; background:#4f46e5; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">💾 Simpan Perubahan</button>
+                <button type="submit" name="simpan_jadwal" style="width:100%; padding:12px; background:#4f46e5; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">💾 Simpan Seluruh Perubahan</button>
             </form>
         </div>
     </div>
