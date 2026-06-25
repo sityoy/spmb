@@ -530,6 +530,9 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
         window.history.replaceState(null, null, newUrl);
     }
 
+    // Variabel global untuk menyimpan sudut putaran gambar
+    let currentRotation = 0;
+
     function bukaModalBerkas(nama, ijazah, tka, kk, akte, ktpbapak, ktpibu, sptjm, kjp_status, tabkjp) {
         document.getElementById('mdl_nama').innerText = nama;
         
@@ -545,16 +548,22 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
 
         let html = '<div class="grid-berkas">';
         berkas.forEach(b => {
-            html += (b.file) ? 
-                `<div class="berkas-item success">
-                    <span>✅ ${b.nama}</span>
-                    <button onclick="tampilkanPreview('view_file.php?file=${encodeURIComponent(b.file)}')" class="btn-lihat">👁️ Lihat</button>
-                 </div>` : 
-                `<div class="berkas-item danger"><span>❌ ${b.nama}</span></div>`;
+            if (b.file) {
+                html += `<div class="berkas-item success">
+                            <span>✅ ${b.nama}</span>
+                            <button onclick="tampilkanPreview('${encodeURIComponent(b.file)}')" class="btn-lihat">👁️ Lihat</button>
+                         </div>`;
+            } else {
+                html += `<div class="berkas-item danger"><span>❌ ${b.nama}</span></div>`;
+            }
         });
         
         if (kjp_status === 'Ya') {
-            html += `<div class="berkas-item success"><span>✅ KJP</span><button onclick="tampilkanPreview('view_file.php?file=${encodeURIComponent(tabkjp)}')" class="btn-lihat">👁️ Lihat</button></div>`;
+            if (tabkjp) {
+                html += `<div class="berkas-item success"><span>✅ KJP</span><button onclick="tampilkanPreview('${encodeURIComponent(tabkjp)}')" class="btn-lihat">👁️ Lihat</button></div>`;
+            } else {
+                html += `<div class="berkas-item danger"><span>❌ KJP</span></div>`;
+            }
         }
         
         html += '</div>';
@@ -564,20 +573,52 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
         document.getElementById('modalBerkas').style.display = 'flex';
     }
 
-    function tampilkanPreview(url) {
+    function tampilkanPreview(encodedFileName) {
         const area = document.getElementById('area-preview');
-        const fileName = decodeURIComponent(url.split('file=')[1]);
+        const fileName = decodeURIComponent(encodedFileName);
+        const fileUrl = 'uploads/' + fileName; // Memanggil langsung dari folder uploads
+        
+        // Deteksi jenis file (Gambar atau PDF)
+        const ext = fileName.split('.').pop().toLowerCase();
+        const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
+        
+        currentRotation = 0; // Reset putaran ke 0 setiap kali buka gambar baru
+
+        let btnRotate = '';
+        let previewContent = '';
+
+        if (isImage) {
+            // Jika file berupa gambar, sediakan tombol putar dan tampilkan menggunakan tag <img>
+            btnRotate = `<button onclick="putarGambar()" style="background:#eab308; color:#fff; padding:6px 12px; border-radius:5px; text-decoration:none; font-size:12px; font-weight:bold; border:none; cursor:pointer; margin-right:8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">🔄 Putar Gambar</button>`;
+            
+            previewContent = `
+                <div style="background:#f1f5f9; border:1px solid #ddd; border-radius:8px; padding:20px; display:flex; justify-content:center; align-items:center; min-height:400px; overflow:hidden;">
+                    <img id="img-preview" src="${fileUrl}" style="max-width:100%; max-height:550px; transition: transform 0.3s ease-in-out; border-radius:4px;">
+                </div>`;
+        } else {
+            // Jika file berupa PDF, tetap gunakan iframe
+            previewContent = `<iframe src="${fileUrl}" style="width:100%; height:500px; border:1px solid #ddd; border-radius:8px;"></iframe>`;
+        }
         
         area.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                <p style="font-size:12px; margin:0;">Pratinjau:</p>
-                <a href="${url}&download=true" target="_blank" 
-                style="background:#64748b; color:white; padding:5px 10px; border-radius:5px; text-decoration:none; font-size:11px;">
-                💾 Download Manual
-                </a>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <p style="font-size:13px; margin:0; font-weight:700; color:#475569;">Pratinjau: <span style="color:#0f172a;">${fileName}</span></p>
+                <div>
+                    ${btnRotate}
+                    <a href="${fileUrl}" download="${fileName}" 
+                    style="background:#64748b; color:white; padding:6px 12px; border-radius:5px; text-decoration:none; font-size:12px; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    💾 Download
+                    </a>
+                </div>
             </div>
-            <iframe src="${url}" style="width:100%; height:500px; border:1px solid #ddd; border-radius:8px;"></iframe>
+            ${previewContent}
         `;
+    }
+
+    // Fungsi untuk memutar gambar 90 derajat setiap kali diklik
+    function putarGambar() {
+        currentRotation += 90;
+        document.getElementById('img-preview').style.transform = `rotate(${currentRotation}deg)`;
     }
     </script>
 </body>

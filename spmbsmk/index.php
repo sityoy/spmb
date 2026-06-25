@@ -49,6 +49,7 @@ if (isset($_POST['daftar'])) {
     }
 
     $nama       = htmlspecialchars(strtoupper(trim(mysqli_real_escape_string($conn, $_POST['nama_lengkap']))));
+    $nik        = trim(mysqli_real_escape_string($conn, $_POST['nik']));
     $tmpl_lahir = htmlspecialchars(ucwords(strtolower(trim(mysqli_real_escape_string($conn, $_POST['tempat_lahir'])))));
     $tgl_lahir  = trim(mysqli_real_escape_string($conn, $_POST['tanggal_lahir']));
     $nisn       = trim(mysqli_real_escape_string($conn, $_POST['nisn']));
@@ -63,6 +64,11 @@ if (isset($_POST['daftar'])) {
     $riwayat_penyakit = htmlspecialchars(trim(mysqli_real_escape_string($conn, $_POST['riwayat_penyakit'])));
     if (empty($riwayat_penyakit)) { $riwayat_penyakit = "Tidak Ada"; }
     
+    // Variabel Baru
+    $alamat     = htmlspecialchars(trim(mysqli_real_escape_string($conn, $_POST['alamat'])));
+    $kelurahan  = htmlspecialchars(ucwords(strtolower(trim(mysqli_real_escape_string($conn, $_POST['kelurahan'])))));
+    $kecamatan  = htmlspecialchars(ucwords(strtolower(trim(mysqli_real_escape_string($conn, $_POST['kecamatan'])))));
+
     $status_kjp = trim(mysqli_real_escape_string($conn, $_POST['status_kjp']));
     $no_rek_kjp = ""; 
     if ($status_kjp == 'Ya') {
@@ -72,7 +78,6 @@ if (isset($_POST['daftar'])) {
         }
     }
 
-    // Validasi kuota double-check server side tepat sebelum menyimpan ke database
     $cek_kuota_submit = hitungPendaftarGelombang($jurusan, $gelombang_id, $conn);
     $tanggal_lahir_obj = new DateTime($tgl_lahir);
     $hari_ini_obj      = new DateTime(); 
@@ -98,7 +103,8 @@ if (isset($_POST['daftar'])) {
         }
     }
 
-    $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn = '$nisn' OR no_kk = '$no_kk'";
+    // UPDATE: Validasi Duplikat Menyertakan NIK
+    $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn = '$nisn' OR no_kk = '$no_kk' OR nik = '$nik'";
     $hasil_cek    = mysqli_query($conn, $cek_duplikat);
 
     // ANTI-HACK LOKASI (Server Side)
@@ -116,7 +122,7 @@ if (isset($_POST['daftar'])) {
         $dist = rad2deg($dist);
         $jarak_meter = $dist * 60 * 1.1515 * 1.609344 * 1000;
 
-        if ($jarak_meter > 360) { $jarak_tidak_valid = true; }
+        if ($jarak_meter > 590) { $jarak_tidak_valid = true; }
     } else {
         $jarak_tidak_valid = true; 
     }
@@ -128,7 +134,7 @@ if (isset($_POST['daftar'])) {
     } elseif ($jarak_tidak_valid) {
         $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Lokasi Anda tidak valid atau berada di luar area sekolah. Silakan lakukan Verifikasi Lokasi.</div>";
     } elseif (mysqli_num_rows($hasil_cek) > 0) {
-        $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Maaf, NISN, Nomor Seri Ijazah, atau Nomor KK Anda sudah pernah terdaftar di sistem kami.</div>";
+        $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Maaf, NIK, NISN, Nomor Seri Ijazah, atau Nomor KK Anda sudah pernah terdaftar di sistem kami. Anda tidak bisa mendaftar ganda.</div>";
     } elseif ($cek_kuota_submit >= $max_kuota) {
         $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Maaf, Kuota untuk Jurusan tersebut pada " . $gelombang_aktif . " sudah penuh.</div>";
     } elseif (substr($no_kk, 0, 2) !== '31' || strlen($no_kk) !== 16) {
@@ -179,9 +185,12 @@ if (isset($_POST['daftar'])) {
             move_uploaded_file($_FILES['file_sptjm']['tmp_name'], $folder_tujuan . $nama_sptjm) && $upload_kjp_status) {
             
             $no_pendaftaran = "SPMB-SMKPB1-" . date('Y') . "-" . rand(1000, 9999);
+            // Tambahkan baris ini di atas variabel $query
+            $waktu_daftar = date('Y-m-d H:i:s');
             
-            $query = "INSERT INTO pendaftar (no_pendaftaran, nama_lengkap, tempat_lahir, tanggal_lahir, nisn, no_ijazah, asal_sekolah, riwayat_penyakit, no_whatsapp, pilihan_jurusan, nilai_skl, nilai_tka, nilai_test, file_ijazah, file_tka, file_kk, file_akte, no_kk, status_konfirmasi, file_ktp_bapak, file_ktp_ibu, file_sptjm, status_kjp, no_rek_kjp, file_tabungan_kjp, gelombang) 
-                      VALUES ('$no_pendaftaran', '$nama', '$tmpl_lahir', '$tgl_lahir', '$nisn', '$no_ijazah', '$asal', '$riwayat_penyakit', '$wa', '$jurusan', '$skl', '$tka', '0.00', '$nama_ijazah', '$nama_tka', '$nama_kk', '$nama_akte', '$no_kk', 'Menunggu', '$nama_ktp_bapak', '$nama_ktp_ibu', '$nama_sptjm', '$status_kjp', '$no_rek_kjp', '$nama_tabungan_kjp', '$gelombang_id')";
+            // UPDATE: Insert Query menambahkan NIK, Alamat, Kelurahan, Kecamatan
+            $query = "INSERT INTO pendaftar (no_pendaftaran, nama_lengkap, nik, tempat_lahir, tanggal_lahir, nisn, no_ijazah, asal_sekolah, riwayat_penyakit, alamat, kelurahan, kecamatan, no_whatsapp, pilihan_jurusan, nilai_skl, nilai_tka, nilai_test, file_ijazah, file_tka, file_kk, file_akte, no_kk, status_konfirmasi, file_ktp_bapak, file_ktp_ibu, file_sptjm, status_kjp, no_rek_kjp, file_tabungan_kjp, gelombang, tanggal_daftar) 
+                      VALUES ('$no_pendaftaran', '$nama', '$nik', '$tmpl_lahir', '$tgl_lahir', '$nisn', '$no_ijazah', '$asal', '$riwayat_penyakit', '$alamat', '$kelurahan', '$kecamatan', '$wa', '$jurusan', '$skl', '$tka', '0.00', '$nama_ijazah', '$nama_tka', '$nama_kk', '$nama_akte', '$no_kk', 'Menunggu', '$nama_ktp_bapak', '$nama_ktp_ibu', '$nama_sptjm', '$status_kjp', '$no_rek_kjp', '$nama_tabungan_kjp', '$gelombang_id', '$waktu_daftar')";
 
             if (mysqli_query($conn, $query)) {
                 $_SESSION['izin_akses_bukti_' . $no_pendaftaran] = true;
@@ -223,8 +232,9 @@ if (isset($_POST['daftar'])) {
         .input-group-badge-date { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
         
         .form-group label { display: block; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px; }
-        .form-group input, .form-group select { width: 100%; padding: 14px 16px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-family: inherit; font-size: 14px; transition: all 0.2s ease; box-sizing: border-box; background: #fff; color: #1e293b; outline: none; }
-        .form-group input:focus, .form-group select:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 14px 16px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-family: inherit; font-size: 14px; transition: all 0.2s ease; box-sizing: border-box; background: #fff; color: #1e293b; outline: none; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); }
+        .form-group textarea { resize: vertical; min-height: 80px; }
         
         .input-kapital { text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
         .section-title { font-size: 15px; font-weight: 800; color: #0f172a; margin-top: 25px; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9; display: flex; align-items: center; gap: 6px; }
@@ -267,7 +277,7 @@ if (isset($_POST['daftar'])) {
             .grid-form { grid-template-columns: 1fr; gap: 15px; } 
             .full-width { grid-column: span 1; }
             .input-group-badge, .input-group-badge-date { grid-template-columns: 1fr; gap: 8px; }
-            .form-group input, .form-group select { font-size: 16px; padding: 12px 14px; }
+            .form-group input, .form-group select, .form-group textarea { font-size: 16px; padding: 12px 14px; }
             .status-badge-neutral { padding: 12px 0; }
         }
     </style>
@@ -322,6 +332,14 @@ if (isset($_POST['daftar'])) {
                 </div>
 
                 <div class="form-group full-width">
+                    <label>Nomor Induk Kependudukan (NIK Siswa)</label>
+                    <div class="input-group-badge">
+                        <input type="tel" name="nik" id="nik" maxlength="16" placeholder="Wajib 16 Digit Angka NIK" pattern="[0-9]{16}" oninput="this.value = this.value.replace(/[^0-9]/g, ''); jalankanValidasiNik(this)" required>
+                        <span id="box_status_nik" class="status-badge-neutral">Belum Valid</span>
+                    </div>
+                </div>
+
+                <div class="form-group full-width">
                     <label>Nomor Kartu Keluarga (KK DKI Jakarta)</label>
                     <div class="input-group-badge">
                         <input type="tel" id="no_kk" name="no_kk" maxlength="16" placeholder="Wajib 16 Digit & Diawali Angka 31" pattern="[0-9]{16}" oninput="this.value = this.value.replace(/[^0-9]/g, ''); jalankanValidasiSistemKomplit()" required>
@@ -358,6 +376,21 @@ if (isset($_POST['daftar'])) {
                 <div class="form-group">
                     <label>Nomor Seri Ijazah / SK Sidanira</label>
                     <input type="text" name="no_ijazah" placeholder="DN-xx/xxx/xxxxx" required>
+                </div>
+                
+                <div class="form-group full-width">
+                    <label>Alamat Lengkap Domisili Siswa</label>
+                    <textarea name="alamat" placeholder="Contoh : Jl. Jamblang Raya No.2LM ....." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Kelurahan / Desa</label>
+                    <input type="text" name="kelurahan" placeholder="Contoh : Kalianyar" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Kecamatan</label>
+                    <input type="text" name="kecamatan" placeholder="Contoh : Tambora" required>
                 </div>
 
                 <div class="form-group">
@@ -396,7 +429,7 @@ if (isset($_POST['daftar'])) {
                 </div>
 
                 <div class="form-group">
-                    <label>Rata-rata Nilai SIDANIRA / SKL</label>
+                    <label>Rata-rata Nilai SIDANIRA</label>
                     <input type="number" name="nilai_skl" step="0.01" min="0" max="100" placeholder="0.00" 
                         oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0; if(this.value.includes('.')){ let p=this.value.split('.'); if(p[1].length>2) this.value=p[0]+'.'+p[1].substring(0,2); }" required>
                     <small style="color:#64748b; font-size:11px; margin-top:4px; display:block;">*Gunakan tanda <b>titik (.)</b> untuk desimal. Contoh: <b>79.99</b></small>
@@ -423,7 +456,7 @@ if (isset($_POST['daftar'])) {
                 </div>
 
                 <div class="form-group">
-                    <label>2. Scan Hasil Nilai TKA / SKHU <span style="color:red;">*</span></label>
+                    <label>2. Scan Hasil Nilai TKA <span style="color:red;">*</span></label>
                     <div class="custom-upload-box" id="box_tka">
                         <input type="file" name="file_tka" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_tka', 'box_tka')" required>
                         <span class="upload-icon">📄</span>
@@ -535,12 +568,13 @@ if (isset($_POST['daftar'])) {
 <script>
 let isLokasiValid = false;
 let isNisnValid = false;
+let isNikValid = false;
 let isUmurValid = false;
 let isKkValid = false;
 
 function cekSemuaValidasi() {
     const btnSubmit = document.getElementById("btn_submit_form");
-    if (isLokasiValid && isNisnValid && isUmurValid && isKkValid) {
+    if (isLokasiValid && isNisnValid && isNikValid && isUmurValid && isKkValid) {
         btnSubmit.disabled = false; 
     } else {
         btnSubmit.disabled = true;  
@@ -564,7 +598,7 @@ function cekLokasi() {
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             const jarak = R * c;
 
-            if (jarak <= 360) {
+            if (jarak <= 590) {
                 document.getElementById('info-lokasi').innerHTML = "✅ Lokasi Valid (Jarak: " + jarak.toFixed(2) + "m)";
                 document.getElementById('info-lokasi').className = "status-valid";
                 document.getElementById('lat').value = userLat;
@@ -572,7 +606,7 @@ function cekLokasi() {
                 isLokasiValid = true; 
                 cekSemuaValidasi();   
             } else {
-                alert("Pendaftaran Gagal!\nAnda berada di luar radius 360m dari sekolah. Jarak Anda: " + Math.round(jarak) + " meter.");
+                alert("Pendaftaran Gagal!\nAnda berada di luar radius 590m dari sekolah. Jarak Anda: " + Math.round(jarak) + " meter.");
                 document.getElementById('info-lokasi').innerHTML = "❌ Lokasi Terlalu Jauh";
                 document.getElementById('info-lokasi').className = "status-invalid";
                 isLokasiValid = false;
@@ -620,6 +654,20 @@ function toggleKjpFormSistem(nilai) {
         document.getElementById('box_tabungan_kjp').querySelector('.upload-hint').innerText = "Format: JPG, PNG, PDF";
         document.getElementById('box_tabungan_kjp').classList.remove('file-loaded');
     }
+}
+
+function jalankanValidasiNik(input) {
+    const badgeNik = document.getElementById("box_status_nik");
+    if (input.value.length === 16) {
+        badgeNik.innerText = "✅ NIK Valid";
+        badgeNik.className = "status-valid";
+        isNikValid = true; 
+    } else {
+        badgeNik.innerText = "❌ Wajib 16 Angka";
+        badgeNik.className = "status-invalid";
+        isNikValid = false;
+    }
+    cekSemuaValidasi(); 
 }
 
 function jalankanValidasiNisn(input) {
@@ -676,12 +724,13 @@ function jalankanValidasiSistemKomplit() {
 }
 
 document.addEventListener("DOMContentLoaded", function() {
-    const formElements = document.querySelectorAll("input:not([type='file']), select");
+    const formElements = document.querySelectorAll("input:not([type='file']), select, textarea");
     formElements.forEach(el => {
         if (el.name && sessionStorage.getItem(el.name)) {
             el.value = sessionStorage.getItem(el.name);
             if(el.name === "tanggal_lahir" || el.name === "no_kk") jalankanValidasiSistemKomplit();
             if(el.name === "nisn") jalankanValidasiNisn(el);
+            if(el.name === "nik") jalankanValidasiNik(el);
             if(el.name === "status_kjp") toggleKjpFormSistem(el.value);
         }
         el.addEventListener("input", function() { sessionStorage.setItem(el.name, el.value); });

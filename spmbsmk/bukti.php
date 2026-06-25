@@ -221,10 +221,14 @@ function tgl_indo($tanggal) {
 
     <table class="main-table">
         <tr><td>Nama Lengkap</td><td>: <?php echo htmlspecialchars($data['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
+        <tr><td>Nomor Induk Kependudukan (NIK)</td><td>: <?php echo htmlspecialchars($data['nik'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
         <tr><td>Nomor Kartu Keluarga (KK DKI)</td><td>: <?php echo htmlspecialchars($data['no_kk'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
         <tr><td>Tempat, Tgl Lahir</td><td>: <?php echo htmlspecialchars($data['tempat_lahir'], ENT_QUOTES, 'UTF-8') . ", " . tgl_indo($data['tanggal_lahir']); ?></td></tr>
         <tr><td>NISN</td><td>: <?php echo htmlspecialchars($data['nisn'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
         <tr><td>Nomor Ijazah / SKL</td><td>: <?php echo htmlspecialchars($data['no_ijazah'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
+        <tr><td>Alamat Domisili</td><td>: <?php echo htmlspecialchars($data['alamat'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
+        <tr><td>Kelurahan / Desa</td><td>: <?php echo htmlspecialchars($data['kelurahan'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
+        <tr><td>Kecamatan</td><td>: <?php echo htmlspecialchars($data['kecamatan'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
         <tr><td>Asal Sekolah</td><td>: <?php echo htmlspecialchars($data['asal_sekolah'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
         <tr><td>No. WhatsApp</td><td>: <?php echo htmlspecialchars($data['no_whatsapp'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
         <tr><td>Pilihan Jurusan</td><td>: <b style="color:#4f46e5;"><?php echo $jrs; ?></b></td></tr>

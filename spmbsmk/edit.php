@@ -32,6 +32,10 @@ if (!$data) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Tangkap data Biodata
     $nama_lengkap = mysqli_real_escape_string($conn, $_POST['nama_lengkap']);
+    $nik = mysqli_real_escape_string($conn, $_POST['nik']);
+    $alamat = mysqli_real_escape_string($conn, $_POST['alamat']);
+    $kelurahan = mysqli_real_escape_string($conn, $_POST['kelurahan']);
+    $kecamatan = mysqli_real_escape_string($conn, $_POST['kecamatan']);
     $nisn = mysqli_real_escape_string($conn, $_POST['nisn']);
     $no_whatsapp = mysqli_real_escape_string($conn, $_POST['no_whatsapp']);
     $pilihan_jurusan = mysqli_real_escape_string($conn, $_POST['pilihan_jurusan']);
@@ -70,6 +74,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Update semua data ke database
         $update = mysqli_query($conn, "UPDATE pendaftar SET 
             nama_lengkap = '$nama_lengkap',
+            nik = '$nik',
+            alamat = '$alamat',
+            kelurahan = '$kelurahan',
+            kecamatan = '$kecamatan',
             nisn = '$nisn',
             no_whatsapp = '$no_whatsapp',
             pilihan_jurusan = '$pilihan_jurusan',
@@ -108,8 +116,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 13.5px; color: #475569; }
-        input[type="text"], input[type="number"], select { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
-        input:focus, select:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+        input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 15px; font-family: inherit; }
+        textarea { resize: vertical; min-height: 80px; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
         
         .file-box { background: #f8fafc; padding: 15px; border: 1px dashed #94a3b8; border-radius: 6px; }
         .file-box input[type="file"] { margin-top: 10px; font-size: 13px; width: 100%; }
@@ -143,10 +152,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label>Nama Lengkap</label>
                     <input type="text" name="nama_lengkap" value="<?php echo htmlspecialchars($data['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?>" required>
                 </div>
+
+                <div class="form-group">
+                    <label>NIK Siswa</label>
+                    <input type="text" name="nik" value="<?php echo htmlspecialchars($data['nik'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                </div>
                 
                 <div class="form-group">
                     <label>NISN</label>
                     <input type="text" name="nisn" value="<?php echo htmlspecialchars($data['nisn'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Alamat Lengkap Domisili</label>
+                    <textarea name="alamat" required><?php echo htmlspecialchars($data['alamat'], ENT_QUOTES, 'UTF-8'); ?></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Kelurahan / Desa</label>
+                    <input type="text" name="kelurahan" value="<?php echo htmlspecialchars($data['kelurahan'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Kecamatan</label>
+                    <input type="text" name="kecamatan" value="<?php echo htmlspecialchars($data['kecamatan'], ENT_QUOTES, 'UTF-8'); ?>" required>
                 </div>
                 
                 <div class="form-group">
