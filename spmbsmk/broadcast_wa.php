@@ -100,6 +100,7 @@ if (isset($_POST['kirim_broadcast'])) {
                 <option value="Semua">Semua Gelombang</option>
                 <option value="1">Gelombang 1</option>
                 <option value="2">Gelombang 2</option>
+                <option value="Cadangan">Cadangan / Antrian</option>
             </select>
 
             <label>Pilih Status Target</label>
@@ -112,7 +113,7 @@ if (isset($_POST['kirim_broadcast'])) {
 
             <label>Isi Pesan WhatsApp</label>
             <div class="var-box">
-                <b>[NAMA], [NISN], [NO_DAFTAR], [JURUSAN],SMK [GELOMBANG], [STATUS], [ALASAN], [LINK_BUKTI]</b>
+                <b>[NAMA], [NISN], [NO_DAFTAR], [JURUSAN], [GELOMBANG], [STATUS], [ALASAN], [LINK_BUKTI]</b>
             </div>
             <textarea name="pesan" rows="10" required>Halo Bapak/Ibu Calon Wali Murid dari *[NAMA]* (NISN: [NISN]).
 

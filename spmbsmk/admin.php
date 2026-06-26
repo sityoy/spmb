@@ -7,7 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.cookie_use_only_cookies', 1);
     session_start();
 }
-date_default_timezone_set('Asia/Jakarta'); // <-- Tambahkan ini
+date_default_timezone_set('Asia/Jakarta');
 // --- TAMBAHAN ANTI-HACK ---
 if (!isset($_SESSION['login'])) {
     header("Location: login.php");
@@ -48,7 +48,16 @@ $gel_aktif = isset($_GET['gel']) ? $_GET['gel'] : 'Semua';
 
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
 $sql_gel_filter = ($gel_aktif == 'Semua') ? "" : " AND gelombang = '$gel_aktif'";
-$label_gelombang = ($gel_aktif == 'Semua') ? "Semua Gelombang" : "Gelombang " . $gel_aktif;
+
+// Format label gelombang (menambahkan dukungan untuk Cadangan)
+if ($gel_aktif == 'Semua') {
+    $label_gelombang = "Semua Gelombang";
+} elseif ($gel_aktif == 'Cadangan') {
+    $label_gelombang = "Cadangan / Antrian";
+} else {
+    $label_gelombang = "Gelombang " . $gel_aktif;
+}
+
 $sql_search_filter = ($search != '') ? " AND (nama_lengkap LIKE '%$search%' OR no_pendaftaran LIKE '%$search%' OR nisn LIKE '%$search%')" : "";
 
 function hitungKuota($jurusan, $status, $gel, $conn) {
@@ -154,6 +163,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
         </div>
         <div style="display:flex; gap:10px; flex-wrap: wrap;">
             <a href="cetak_nilai_kolektif.php?gel=<?php echo $gel_aktif; ?>" target="_blank" class="btn-action bg-edit" style="background: #0ea5e9;">📊 Cetak Rekap Nilai</a>
+            <a href="cetak_data_full.php?gel=<?php echo $gel_aktif; ?>" target="_blank" class="btn-action" style="background: #14b8a6; color: white;">🗂️ Cetak Full Data</a>
             <a href="broadcast_wa.php" class="btn-action" style="background: #25D366; color: white;">📢 Broadcast WA</a>
             <a href="cetak_kolektif.php" target="_blank" class="btn-action bg-kolektif">📑 Cetak Bukti Kolektif</a>
             <a href="formulir_offline.php" target="_blank" class="btn-action bg-offline">🖨️ Cetak Form Offline</a>
@@ -170,6 +180,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
             <a href="?tab=<?php echo $tab_aktif; ?>&gel=Semua&search=<?php echo urlencode($search); ?>" class="btn-filter <?php echo ($gel_aktif == 'Semua') ? 'active' : ''; ?>">Semua Gelombang</a>
             <a href="?tab=<?php echo $tab_aktif; ?>&gel=1&search=<?php echo urlencode($search); ?>" class="btn-filter <?php echo ($gel_aktif == '1') ? 'active' : ''; ?>">Hanya Gelombang 1</a>
             <a href="?tab=<?php echo $tab_aktif; ?>&gel=2&search=<?php echo urlencode($search); ?>" class="btn-filter <?php echo ($gel_aktif == '2') ? 'active' : ''; ?>">Hanya Gelombang 2</a>
+            <a href="?tab=<?php echo $tab_aktif; ?>&gel=Cadangan&search=<?php echo urlencode($search); ?>" class="btn-filter <?php echo ($gel_aktif == 'Cadangan') ? 'active' : ''; ?>">Cadangan / Antrian</a>
         </div>
 
         <form action="" method="GET" class="search-box">
@@ -226,7 +237,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                         <th>Rank</th>
                         <th>Identitas & Gelombang</th>
                         <th>No HP (WA)</th>
-                        <th>Status</th>
+                        <th>Status & Catatan</th>
                         <th>Dokumen Fisik</th>
                         <th>Evaluasi Nilai & Pembobotan</th>
                         <th>Aksi Keputusan Panitia</th>
@@ -273,14 +284,23 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                             <div class="identitas-box">
                                 <span style="font-weight: 800; font-size: 14px;"><?php echo htmlspecialchars($row['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?></span>
                                 <span class="small-text">NISN: <?php echo htmlspecialchars($row['nisn'], ENT_QUOTES, 'UTF-8');?></span>
-                                <span class="small-text">Jalur: <b style="color:#d97706;">Gelombang <?php echo htmlspecialchars($row['gelombang'], ENT_QUOTES, 'UTF-8'); ?></b></span>
+                                <span class="small-text">Jalur: <b style="color:#d97706; text-transform: capitalize;">Gelombang <?php echo htmlspecialchars($row['gelombang'], ENT_QUOTES, 'UTF-8'); ?></b></span>
                             </div>
                         </td>
                         <td>
                             <span style="font-weight:600; display:block; margin-bottom:5px; font-size:13px;"><?php echo htmlspecialchars($row['no_whatsapp'], ENT_QUOTES, 'UTF-8'); ?></span>
                             <a href="https://wa.me/<?php echo $no_wa; ?>?text=<?php echo $pesan_wa; ?>" target="_blank" class="btn-action bg-wa">💬 Kirim WA Bukti</a>
                         </td>
-                        <td><?php echo $zb; ?></td>
+                        <td>
+                            <?php echo $zb; ?>
+                            
+                            <?php if (!empty($row['catatan_panitia'])): ?>
+                                <div style="margin-top: 8px; background: #fff1f2; border: 1px dashed #fda4af; padding: 8px; border-radius: 6px; font-size: 11px; color: #be123c; line-height: 1.4; max-width: 220px; white-space: normal;">
+                                    <b>📌 Catatan Panitia:</b><br>
+                                    <?php echo nl2br(htmlspecialchars($row['catatan_panitia'], ENT_QUOTES, 'UTF-8')); ?>
+                                </div>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <button class="btn-action bg-view" onclick="bukaModalBerkas('<?php echo addslashes($row['nama_lengkap']); ?>', '<?php echo $row['file_ijazah']; ?>', '<?php echo $row['file_tka']; ?>', '<?php echo $row['file_kk']; ?>', '<?php echo $row['file_akte']; ?>', '<?php echo $row['file_ktp_bapak']; ?>', '<?php echo $row['file_ktp_ibu']; ?>', '<?php echo $row['file_sptjm']; ?>', '<?php echo $row['status_kjp']; ?>', '<?php echo $row['file_tabungan_kjp']; ?>')">📂 Cek Berkas</button>
                         </td>
@@ -345,7 +365,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                         <th>Rank</th>
                         <th>Identitas & Gelombang</th>
                         <th>No HP (WA)</th>
-                        <th>Status</th>
+                        <th>Status & Catatan</th>
                         <th>Dokumen Fisik</th>
                         <th>Evaluasi Nilai & Pembobotan</th>
                         <th>Aksi Keputusan Panitia</th>
@@ -392,14 +412,23 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                             <div class="identitas-box">
                                 <span style="font-weight: 800; font-size: 14px;"><?php echo htmlspecialchars($row['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?></span>
                                 <span class="small-text">NISN: <?php echo htmlspecialchars($row['nisn'], ENT_QUOTES, 'UTF-8');?></span>
-                                <span class="small-text">Jalur: <b style="color:#d97706;">Gelombang <?php echo htmlspecialchars($row['gelombang'], ENT_QUOTES, 'UTF-8'); ?></b></span>
+                                <span class="small-text">Jalur: <b style="color:#d97706; text-transform: capitalize;">Gelombang <?php echo htmlspecialchars($row['gelombang'], ENT_QUOTES, 'UTF-8'); ?></b></span>
                             </div>
                         </td>
                         <td>
                             <span style="font-weight:600; display:block; margin-bottom:5px; font-size:13px;"><?php echo htmlspecialchars($row['no_whatsapp'], ENT_QUOTES, 'UTF-8'); ?></span>
                             <a href="https://wa.me/<?php echo $no_wa; ?>?text=<?php echo $pesan_wa; ?>" target="_blank" class="btn-action bg-wa">💬 Kirim WA Bukti</a>
                         </td>
-                        <td><?php echo $zb; ?></td>
+                        <td>
+                            <?php echo $zb; ?>
+                            
+                            <?php if (!empty($row['catatan_panitia'])): ?>
+                                <div style="margin-top: 8px; background: #fff1f2; border: 1px dashed #fda4af; padding: 8px; border-radius: 6px; font-size: 11px; color: #be123c; line-height: 1.4; max-width: 220px; white-space: normal;">
+                                    <b>📌 Catatan Panitia:</b><br>
+                                    <?php echo nl2br(htmlspecialchars($row['catatan_panitia'], ENT_QUOTES, 'UTF-8')); ?>
+                                </div>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <button class="btn-action bg-view" onclick="bukaModalBerkas('<?php echo addslashes($row['nama_lengkap']); ?>', '<?php echo $row['file_ijazah']; ?>', '<?php echo $row['file_tka']; ?>', '<?php echo $row['file_kk']; ?>', '<?php echo $row['file_akte']; ?>', '<?php echo $row['file_ktp_bapak']; ?>', '<?php echo $row['file_ktp_ibu']; ?>', '<?php echo $row['file_sptjm']; ?>', '<?php echo $row['status_kjp']; ?>', '<?php echo $row['file_tabungan_kjp']; ?>')">📂 Cek Berkas</button>
                         </td>
@@ -454,8 +483,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
         </div>
     </div>
 
-   <!-- Modal Setting Jadwal -->
-    <?php
+   <?php
     function format_tgl_indo($datetime) {
         $bulan = [1=>'Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
         $timestamp = strtotime($datetime);
@@ -530,8 +558,10 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
         window.history.replaceState(null, null, newUrl);
     }
 
-    // Variabel global untuk menyimpan sudut putaran gambar
     let currentRotation = 0;
+    let currentScale = 1;
+    let isDragging = false;
+    let startX, startY, scrollLeft, scrollTop;
 
     function bukaModalBerkas(nama, ijazah, tka, kk, akte, ktpbapak, ktpibu, sptjm, kjp_status, tabkjp) {
         document.getElementById('mdl_nama').innerText = nama;
@@ -576,35 +606,47 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
     function tampilkanPreview(encodedFileName) {
         const area = document.getElementById('area-preview');
         const fileName = decodeURIComponent(encodedFileName);
-        const fileUrl = 'uploads/' + fileName; // Memanggil langsung dari folder uploads
+        const fileUrl = 'uploads/' + fileName; 
         
-        // Deteksi jenis file (Gambar atau PDF)
         const ext = fileName.split('.').pop().toLowerCase();
         const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
         
-        currentRotation = 0; // Reset putaran ke 0 setiap kali buka gambar baru
+        currentRotation = 0; 
+        currentScale = 1;
 
-        let btnRotate = '';
+        let btnControls = '';
         let previewContent = '';
 
         if (isImage) {
-            // Jika file berupa gambar, sediakan tombol putar dan tampilkan menggunakan tag <img>
-            btnRotate = `<button onclick="putarGambar()" style="background:#eab308; color:#fff; padding:6px 12px; border-radius:5px; text-decoration:none; font-size:12px; font-weight:bold; border:none; cursor:pointer; margin-right:8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">🔄 Putar Gambar</button>`;
+            btnControls = `
+                <button onclick="zoomGambar(0.2)" style="background:#3b82f6; color:#fff; padding:6px 10px; border-radius:5px; text-decoration:none; font-size:12px; font-weight:bold; border:none; cursor:pointer; margin-right:5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">🔍 Zoom In</button>
+                <button onclick="zoomGambar(-0.2)" style="background:#f97316; color:#fff; padding:6px 10px; border-radius:5px; text-decoration:none; font-size:12px; font-weight:bold; border:none; cursor:pointer; margin-right:5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">🔎 Zoom Out</button>
+                <button onclick="putarGambar()" style="background:#eab308; color:#fff; padding:6px 10px; border-radius:5px; text-decoration:none; font-size:12px; font-weight:bold; border:none; cursor:pointer; margin-right:8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">🔄 Putar</button>
+            `;
             
             previewContent = `
-                <div style="background:#f1f5f9; border:1px solid #ddd; border-radius:8px; padding:20px; display:flex; justify-content:center; align-items:center; min-height:400px; overflow:hidden;">
-                    <img id="img-preview" src="${fileUrl}" style="max-width:100%; max-height:550px; transition: transform 0.3s ease-in-out; border-radius:4px;">
+                <p style="font-size:11.5px; color:#64748b; margin-top:0; margin-bottom:8px; font-style:italic;">
+                    💡 <b>Tips Cepat:</b> Gunakan <b>Scroll Mouse</b> untuk Zoom, dan <b>Klik Kiri + Geser Mouse</b> untuk melihat detail teks.
+                </p>
+                <div id="zoom-container" 
+                     onwheel="zoomDenganMouse(event)"
+                     onmousedown="mulaiDrag(event)"
+                     onmousemove="sedangDrag(event)"
+                     onmouseup="selesaiDrag()"
+                     onmouseleave="selesaiDrag()"
+                     style="background:#f1f5f9; border:1px solid #ddd; border-radius:8px; padding:20px; display:flex; justify-content:center; align-items:center; height:450px; overflow:auto; cursor:grab; position:relative;">
+                    
+                    <img id="img-preview" src="${fileUrl}" style="max-width:100%; max-height:100%; transition: transform 0.15s ease-out; border-radius:4px; transform-origin: center center; pointer-events:none;">
                 </div>`;
         } else {
-            // Jika file berupa PDF, tetap gunakan iframe
             previewContent = `<iframe src="${fileUrl}" style="width:100%; height:500px; border:1px solid #ddd; border-radius:8px;"></iframe>`;
         }
         
         area.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:10px;">
                 <p style="font-size:13px; margin:0; font-weight:700; color:#475569;">Pratinjau: <span style="color:#0f172a;">${fileName}</span></p>
-                <div>
-                    ${btnRotate}
+                <div style="display:flex; flex-wrap:wrap;">
+                    ${btnControls}
                     <a href="${fileUrl}" download="${fileName}" 
                     style="background:#64748b; color:white; padding:6px 12px; border-radius:5px; text-decoration:none; font-size:12px; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     💾 Download
@@ -615,10 +657,75 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
         `;
     }
 
-    // Fungsi untuk memutar gambar 90 derajat setiap kali diklik
+    function zoomGambar(step) {
+        currentScale += step;
+        if (currentScale < 0.3) currentScale = 0.3; 
+        if (currentScale > 5.0) currentScale = 5.0; 
+        terapkanTransformasi();
+    }
+
+    function zoomDenganMouse(event) {
+        event.preventDefault(); 
+        const step = event.deltaY < 0 ? 0.25 : -0.25; 
+        zoomGambar(step);
+    }
+
     function putarGambar() {
         currentRotation += 90;
-        document.getElementById('img-preview').style.transform = `rotate(${currentRotation}deg)`;
+        terapkanTransformasi();
+    }
+
+    function terapkanTransformasi() {
+        const img = document.getElementById('img-preview');
+        const container = document.getElementById('zoom-container');
+        if (img) {
+            if (currentScale > 1) {
+                img.style.maxWidth = 'none';
+                img.style.maxHeight = 'none';
+                container.style.alignItems = 'flex-start'; 
+                container.style.justifyContent = 'flex-start';
+            } else {
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '100%';
+                container.style.alignItems = 'center';
+                container.style.justifyContent = 'center';
+            }
+            img.style.transform = `scale(${currentScale}) rotate(${currentRotation}deg)`;
+        }
+    }
+
+    function mulaiDrag(e) {
+        const container = document.getElementById('zoom-container');
+        if(currentScale <= 1) return; 
+        
+        isDragging = true;
+        container.style.cursor = 'grabbing';
+        
+        startX = e.pageX - container.offsetLeft;
+        startY = e.pageY - container.offsetTop;
+        scrollLeft = container.scrollLeft;
+        scrollTop = container.scrollTop;
+    }
+
+    function sedangDrag(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        
+        const container = document.getElementById('zoom-container');
+        const x = e.pageX - container.offsetLeft;
+        const y = e.pageY - container.offsetTop;
+        
+        const walkX = (x - startX) * 1.5; 
+        const walkY = (y - startY) * 1.5;
+        
+        container.scrollLeft = scrollLeft - walkX;
+        container.scrollTop = scrollTop - walkY;
+    }
+
+    function selesaiDrag() {
+        isDragging = false;
+        const container = document.getElementById('zoom-container');
+        if(container) container.style.cursor = 'grab';
     }
     </script>
 </body>

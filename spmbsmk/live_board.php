@@ -2,10 +2,10 @@
 date_default_timezone_set('Asia/Jakarta');
 include 'koneksi.php';
 
-// Menentukan parameter Gelombang yang dipilih (default Gelombang 1)
-$gelombang = isset($_GET['gelombang']) ? (int)$_GET['gelombang'] : 1;
-if ($gelombang !== 1 && $gelombang !== 2) {
-    $gelombang = 1;
+// Menentukan parameter Gelombang yang dipilih (dukung string Cadangan)
+$gelombang = isset($_GET['gelombang']) ? $_GET['gelombang'] : '1';
+if ($gelombang !== '1' && $gelombang !== '2' && $gelombang !== 'Cadangan') {
+    $gelombang = '1';
 }
 
 // Ambil Pengaturan Jadwal dari Database
@@ -16,18 +16,24 @@ $tanggal_buka = "";
 
 // Validasi Tanggal Pembukaan Live Board dari database
 $bulan_indo = [1=>'Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-if ($gelombang == 1 && $sekarang < $pengaturan['buka_gel_1']) {
+if ($gelombang == '1' && $sekarang < $pengaturan['buka_gel_1']) {
     $is_locked = true;
     $ts = strtotime($pengaturan['buka_gel_1']);
     $tanggal_buka = date('d', $ts) . ' ' . $bulan_indo[(int)date('m', $ts)] . ' ' . date('Y H:i', $ts) . " WIB";
-} elseif ($gelombang == 2 && $sekarang < $pengaturan['buka_gel_2']) {
+} elseif ($gelombang == '2' && $sekarang < $pengaturan['buka_gel_2']) {
     $is_locked = true;
     $ts = strtotime($pengaturan['buka_gel_2']);
     $tanggal_buka = date('d', $ts) . ' ' . $bulan_indo[(int)date('m', $ts)] . ' ' . date('Y H:i', $ts) . " WIB";
 }
 
-// Set Kuota Maksimal Utama Berdasarkan Gelombang
-$quota = ($gelombang == 1) ? 25 : 11;
+// Set Kuota Maksimal Utama Berdasarkan Database
+if ($gelombang == '1') {
+    $quota = (int)$pengaturan['max_kuota_g1'];
+} elseif ($gelombang == '2') {
+    $quota = (int)$pengaturan['max_kuota_g2'];
+} else {
+    $quota = 0; // Cadangan tidak memiliki batas kuota tetap
+}
 
 // Logika Pengurutan Peringkat Panitia
 $order_logic = "ORDER BY CASE status_konfirmasi 
@@ -77,13 +83,11 @@ if (!$is_locked) {
         .tab-btn:hover { background: #f1f5f9; }
         .tab-btn.active { background: #4f46e5; color: white; border-color: #4f46e5; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2); }
         
-        /* Summary Grid Ala Admin */
         .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .card-box { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
         .card-box h4 { margin: 0 0 10px 0; font-size: 13px; color: #64748b; font-weight: 700; text-transform: uppercase; }
         .card-number { font-size: 32px; font-weight: 800; color: #1e293b; }
         
-        /* Tabel Full Width */
         .section-title { font-size: 18px; font-weight: 800; color: #1e293b; margin: 0 0 15px 0; display: flex; align-items: center; gap: 10px; }
         .table-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; margin-bottom: 40px; }
         .table-responsive { overflow-x: auto; }
@@ -93,7 +97,6 @@ if (!$is_locked) {
         td { padding: 15px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
         tr:hover { background-color: #f8fafc; }
         
-        /* Status Badges */
         .status-badge { display: inline-block; padding: 5px 12px; font-size: 11px; font-weight: 700; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
         .badge-masuk { background: #d1fae5; color: #065f46; border: 1px solid #34d399; }
         .badge-luar { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
@@ -108,14 +111,12 @@ if (!$is_locked) {
         .btn-back { display: block; text-align: center; width: max-content; margin: 30px auto 0 auto; color: #4f46e5; text-decoration: none; font-weight: 700; font-size: 15px; padding: 12px 25px; border: 2px solid #e0e7ff; background: white; border-radius: 10px; transition: 0.2s; }
         .btn-back:hover { background: #f8fafc; border-color: #c7d2fe; }
         
-        /* Modal Style Admin */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,23,42,0.7); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 15px; }
         .modal-content { background: #fff; width: 100%; max-width: 450px; border-radius: 16px; padding: 25px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; }
         .info-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; color: #475569; }
         .info-row.bold { font-weight: 800; color: #1e293b; }
         
-        /* Lock Card */
         .lock-card { background: white; border-radius: 16px; border: 1px solid #fca5a5; padding: 40px 20px; text-align: center; max-width: 500px; margin: 40px auto; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
         .lock-icon { font-size: 50px; margin-bottom: 15px; }
         .lock-title { font-size: 18px; font-weight: 800; color: #991b1b; margin-bottom: 8px; }
@@ -147,8 +148,9 @@ if (!$is_locked) {
 
 <div class="container">
     <div class="tab-container">
-        <a href="live_board.php?gelombang=1" class="tab-btn <?php echo ($gelombang == 1) ? 'active' : ''; ?>">Gelombang 1</a>
-        <a href="live_board.php?gelombang=2" class="tab-btn <?php echo ($gelombang == 2) ? 'active' : ''; ?>">Gelombang 2</a>
+        <a href="live_board.php?gelombang=1" class="tab-btn <?php echo ($gelombang == '1') ? 'active' : ''; ?>">Gelombang 1</a>
+        <a href="live_board.php?gelombang=2" class="tab-btn <?php echo ($gelombang == '2') ? 'active' : ''; ?>">Gelombang 2</a>
+        <a href="live_board.php?gelombang=Cadangan" class="tab-btn <?php echo ($gelombang == 'Cadangan') ? 'active' : ''; ?>">Cadangan / Antrian</a>
     </div>
 
     <?php if ($is_locked): ?>
@@ -163,18 +165,18 @@ if (!$is_locked) {
         
         <div class="summary-grid">
             <div class="card-box" style="border-left: 5px solid #4f46e5;">
-                <h4>Total Mendaftar Gel. <?php echo $gelombang; ?></h4>
+                <h4>Total Mendaftar Gel. <?php echo ($gelombang == 'Cadangan') ? 'Cadangan' : $gelombang; ?></h4>
                 <div class="card-number"><?php echo mysqli_num_rows($result_live_akl) + mysqli_num_rows($result_live_mplb); ?> <span style="font-size:14px; color:#64748b; font-weight:500;">Siswa</span></div>
             </div>
             <div class="card-box" style="border-left: 5px solid #10b981;">
                 <h4>Kompetisi AKL</h4>
                 <div class="card-number"><?php echo mysqli_num_rows($result_live_akl); ?> <span style="font-size:14px; color:#64748b; font-weight:500;">Siswa</span></div>
-                <div style="font-size:12px; color:#059669; font-weight:bold; margin-top:5px;">Memperebutkan <?php echo $quota; ?> Kuota</div>
+                <div style="font-size:12px; color:#059669; font-weight:bold; margin-top:5px;"><?php echo ($gelombang == 'Cadangan') ? 'Menunggu Kuota Kosong' : 'Memperebutkan '.$quota.' Kuota'; ?></div>
             </div>
             <div class="card-box" style="border-left: 5px solid #0284c7;">
                 <h4>Kompetisi MPLB</h4>
                 <div class="card-number"><?php echo mysqli_num_rows($result_live_mplb); ?> <span style="font-size:14px; color:#64748b; font-weight:500;">Siswa</span></div>
-                <div style="font-size:12px; color:#0284c7; font-weight:bold; margin-top:5px;">Memperebutkan <?php echo $quota; ?> Kuota</div>
+                <div style="font-size:12px; color:#0284c7; font-weight:bold; margin-top:5px;"><?php echo ($gelombang == 'Cadangan') ? 'Menunggu Kuota Kosong' : 'Memperebutkan '.$quota.' Kuota'; ?></div>
             </div>
         </div>
 
@@ -204,8 +206,13 @@ if (!$is_locked) {
                             $cl_row = 'row-batal';
                             $badge = "<span class='status-badge badge-batal'>BATAL MENGUNDURKAN DIRI</span>";
                         } else {
-                            $cl_row = ($r <= $quota) ? '' : 'row-luar';
-                            $badge = ($r <= $quota) ? "<span class='status-badge badge-masuk'>KUOTA UTAMA</span>" : "<span class='status-badge badge-luar'>DI LUAR KUOTA</span>";
+                            if ($gelombang == 'Cadangan') {
+                                $cl_row = 'row-luar';
+                                $badge = "<span class='status-badge badge-luar'>ANTRIAN CADANGAN</span>";
+                            } else {
+                                $cl_row = ($r <= $quota) ? '' : 'row-luar';
+                                $badge = ($r <= $quota) ? "<span class='status-badge badge-masuk'>KUOTA UTAMA</span>" : "<span class='status-badge badge-luar'>DI LUAR KUOTA</span>";
+                            }
                         }
                         
                         $asli_skl = (float)$row['nilai_skl'];
@@ -218,8 +225,6 @@ if (!$is_locked) {
                         $nilai_akhir_fix = ($nilai_berkas_bobot + $nilai_test) / 2;
                         
                         $nisn_sensor = substr($row['nisn'], 0, 3) . '****' . substr($row['nisn'], -3);
-                        
-                        // Siapkan parameter aman untuk JavaScript
                         $js_nama = addslashes(htmlspecialchars($row['nama_lengkap'], ENT_QUOTES));
                 ?>
                     <tr class="<?php echo $cl_row; ?>">
@@ -269,8 +274,13 @@ if (!$is_locked) {
                             $cl_row = 'row-batal';
                             $badge = "<span class='status-badge badge-batal'>BATAL MENGUNDURKAN DIRI</span>";
                         } else {
-                            $cl_row = ($r <= $quota) ? '' : 'row-luar';
-                            $badge = ($r <= $quota) ? "<span class='status-badge badge-masuk'>KUOTA UTAMA</span>" : "<span class='status-badge badge-luar'>DI LUAR KUOTA</span>";
+                            if ($gelombang == 'Cadangan') {
+                                $cl_row = 'row-luar';
+                                $badge = "<span class='status-badge badge-luar'>ANTRIAN CADANGAN</span>";
+                            } else {
+                                $cl_row = ($r <= $quota) ? '' : 'row-luar';
+                                $badge = ($r <= $quota) ? "<span class='status-badge badge-masuk'>KUOTA UTAMA</span>" : "<span class='status-badge badge-luar'>DI LUAR KUOTA</span>";
+                            }
                         }
                         
                         $asli_skl = (float)$row['nilai_skl'];
@@ -357,7 +367,6 @@ if (!$is_locked) {
 </div>
 
 <script>
-// Fungsi Buka Modal Detail Nilai
 function bukaModalNilai(nama, sdn_asli, sdn_bobot, tka_asli, tka_bobot, gab_berkas, test, akhir) {
     document.getElementById('mdl_nama').innerText = nama;
     document.getElementById('mdl_sdn_asli').innerText = sdn_asli;
@@ -371,7 +380,6 @@ function bukaModalNilai(nama, sdn_asli, sdn_bobot, tka_asli, tka_bobot, gab_berk
     document.getElementById('modalNilai').style.display = 'flex';
 }
 
-// Menutup modal jika klik di luar area putih (content)
 document.getElementById('modalNilai').addEventListener('click', function(e) {
     if (e.target === this) {
         this.style.display = 'none';
@@ -379,3 +387,4 @@ document.getElementById('modalNilai').addEventListener('click', function(e) {
 });
 </script>
 </body>
+</html>

@@ -10,6 +10,7 @@ include 'koneksi.php';
 
 $gel = isset($_GET['gel']) ? preg_replace('/[^a-zA-Z0-9]/', '', $_GET['gel']) : 'Semua';
 $sql_gel = ($gel == 'Semua') ? "" : "WHERE gelombang = '$gel'";
+$label_gel = ($gel == 'Semua') ? 'Semua Gelombang' : (($gel == 'Cadangan') ? 'Cadangan / Antrian' : 'Gelombang ' . $gel);
 
 // Menggunakan rumus matematika langsung di SQL agar bisa di-Sort (ORDER BY) berdasarkan Skor Akhir tertinggi
 $query = "SELECT *, 
@@ -24,7 +25,7 @@ $result = mysqli_query($conn, $query);
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Rekap Nilai & Peringkat - Gelombang <?php echo $gel; ?></title>
+    <title>Rekap Nilai & Peringkat - <?php echo $label_gel; ?></title>
     <link rel="icon" type="image/x-icon" href="logo/logosmkpb.png">
     <style>
         body { font-family: 'Times New Roman', Times, serif; font-size: 11px; color: #000; background: #fff; padding: 10px; }
@@ -58,7 +59,7 @@ $result = mysqli_query($conn, $query);
     <div class="kop">
         <h2>REKAPITULASI PERINGKAT & NILAI CALON PESERTA DIDIK BARU</h2>
         <h3>SMKS PERMATA BUNDA I JAKARTA</h3>
-        <p>Filter Jalur: <b><?php echo ($gel == 'Semua') ? 'Semua Gelombang' : 'Gelombang ' . $gel; ?></b> | Tanggal Cetak: 
+        <p>Filter Jalur: <b><?php echo $label_gel; ?></b> | Tanggal Cetak: 
         <?php 
         $bulan_indo = array(1 => 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember');
         echo date('d') . ' ' . $bulan_indo[(int)date('m')] . ' ' . date('Y H:i'); 
@@ -69,17 +70,18 @@ $result = mysqli_query($conn, $query);
         <thead>
             <tr>
                 <th rowspan="2" style="width: 2%;">No</th>
-                <th rowspan="2" style="width: 4%;">Rank</th>
-                <th rowspan="2" style="width: 9%;">No. Pend</th>
+                <th rowspan="2" style="width: 3%;">Rank</th>
+                <th rowspan="2" style="width: 8%;">No. Pend</th>
                 <th rowspan="2" style="width: 14%;">Nama Lengkap</th>
-                <th rowspan="2" style="width: 7%;">NISN</th>
+                <th rowspan="2" style="width: 6%;">NISN</th>
+                <th rowspan="2" style="width: 8%;">NIK</th>
                 <th rowspan="2" style="width: 4%;">Umur</th>
-                <th rowspan="2" style="width: 13%;">Asal Sekolah</th>
-                <th rowspan="2" style="width: 5%;">Jurusan</th>
+                <th rowspan="2" style="width: 12%;">Asal Sekolah</th>
+                <th rowspan="2" style="width: 4%;">Jurusan</th>
                 <th colspan="2" style="width: 10%;">Sidanira / SKL</th>
                 <th colspan="2" style="width: 10%;">Tes TKA / SKHU</th>
-                <th rowspan="2" style="width: 6%;">Nilai Uji</th>
-                <th rowspan="2" style="width: 8%;">Nilai Akhir</th>
+                <th rowspan="2" style="width: 5%;">Nilai Uji</th>
+                <th rowspan="2" style="width: 6%;">Nilai Akhir</th>
                 <th rowspan="2" style="width: 8%;">Status Seleksi</th>
             </tr>
             <tr>
@@ -100,11 +102,10 @@ $result = mysqli_query($conn, $query);
                     
                     // Logika Reset Ranking per Jurusan
                     if ($jurusan_aktif !== $row['pilihan_jurusan']) {
-                        $rank = 1; // Kembalikan rank ke 1 jika jurusannya ganti (misal dari AKL pindah ke MPLB)
+                        $rank = 1; 
                         $jurusan_aktif = $row['pilihan_jurusan'];
                     }
 
-                    // Perhitungan Nilai (Sama dengan format SQL agar klop)
                     $asli_skl = (float)$row['nilai_skl'];
                     $bobot_skl = $asli_skl * 0.70;
                     
@@ -113,8 +114,6 @@ $result = mysqli_query($conn, $query);
                     
                     $nilai_berkas_bobot = ($bobot_skl + $bobot_tka) / 2;
                     $nilai_test = (float)$row['nilai_test'];
-                    
-                    // Mengambil nilai akhir langsung dari kalkulasi SQL 'skor_akhir'
                     $nilai_akhir = (float)$row['skor_akhir'];
 
                     // Perhitungan Umur
@@ -141,6 +140,7 @@ $result = mysqli_query($conn, $query);
                 <td>`<?php echo $row['no_pendaftaran']; ?>`</td>
                 <td class="text-left"><?php echo htmlspecialchars($row['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?></td>
                 <td><?php echo htmlspecialchars($row['nisn'], ENT_QUOTES, 'UTF-8'); ?></td>
+                <td><?php echo htmlspecialchars($row['nik'], ENT_QUOTES, 'UTF-8'); ?></td>
                 <td><?php echo $umur_output; ?></td>
                 <td class="text-left"><?php echo htmlspecialchars($row['asal_sekolah'], ENT_QUOTES, 'UTF-8'); ?></td>
                 <td><?php echo ($row['pilihan_jurusan'] == 'Akuntansi dan Keuangan Lembaga') ? 'AKL' : 'MPLB'; ?></td>
@@ -155,7 +155,7 @@ $result = mysqli_query($conn, $query);
             <?php 
                 } 
             } else { 
-                echo "<tr><td colspan='15' style='padding: 20px; font-weight: bold;'>Tidak ada data siswa pendaftar pada filter ini.</td></tr>"; 
+                echo "<tr><td colspan='16' style='padding: 20px; font-weight: bold;'>Tidak ada data siswa pendaftar pada filter ini.</td></tr>"; 
             } 
             ?>
         </tbody>

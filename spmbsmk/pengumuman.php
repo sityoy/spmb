@@ -6,7 +6,6 @@ $pesan = "";
 $tampil_hasil = false;
 $siswa_ditemukan = null;
 $peringkat_siswa = 0;
-$quota = 25; // default penampung kuota
 
 // Fungsi bantu format tanggal Indonesia
 function tgl_indo_pengumuman($tanggal) {
@@ -46,7 +45,7 @@ if (isset($_POST['cek'])) {
 
     if (mysqli_num_rows($result_siswa) === 1) {
       $siswa_ditemukan = mysqli_fetch_assoc($result_siswa);
-      $gelombang_siswa = (int)$siswa_ditemukan['gelombang'];
+      $gelombang_siswa = $siswa_ditemukan['gelombang']; // Biarkan sebagai string (Jangan di-cast)
       $jurusan_siswa  = $siswa_ditemukan['pilihan_jurusan'];
       $id_pendaftar  = $siswa_ditemukan['id'];
       
@@ -55,18 +54,20 @@ if (isset($_POST['cek'])) {
       $boleh_buka = false;
       $tgl_buka_pesan = "";
 
-      if ($gelombang_siswa == 1) {
+      if ($gelombang_siswa == '1') {
         if ($sekarang >= $pengaturan['buka_gel_1']) { $boleh_buka = true; }
         else { $tgl_buka_pesan = tgl_indo_pengumuman($pengaturan['buka_gel_1']); }
-      } elseif ($gelombang_siswa == 2) {
+      } elseif ($gelombang_siswa == '2') {
         if ($sekarang >= $pengaturan['buka_gel_2']) { $boleh_buka = true; }
         else { $tgl_buka_pesan = tgl_indo_pengumuman($pengaturan['buka_gel_2']); }
+      } elseif ($gelombang_siswa == 'Cadangan') {
+        $boleh_buka = true; // Cadangan tidak punya jadwal spesifik, selalu bisa cek
       }
 
       if (!$boleh_buka) {
         $pesan = "<div class='alert alert-danger'><b>Pengumuman Kelulusan Belum Dibuka!</b><br>Anda tercatat sebagai pendaftar <b>Gelombang $gelombang_siswa</b>. Hasil seleksi peringkat baru akan diumumkan resmi pada <b>$tgl_buka_pesan</b>.</div>";
       } else {
-        $quota = ($gelombang_siswa == 1) ? 25 : 11;
+        $quota = ($gelombang_siswa == '1') ? (int)$pengaturan['max_kuota_g1'] : (($gelombang_siswa == '2') ? (int)$pengaturan['max_kuota_g2'] : 0);
 
         $query_rank = "SELECT id, ((nilai_skl + nilai_tka) / 2) as nilai_akhir 
                FROM pendaftar 
@@ -151,7 +152,7 @@ if (isset($_POST['cek'])) {
 
       <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px;">
         <tr><td style="padding:7px; font-weight:600; color:#475569; width:40%; text-align:left; border-bottom:1px solid #f1f5f9;">Nama Lengkap</td><td style="padding:7px; text-align:left; border-bottom:1px solid #f1f5f9;">: <?php echo $siswa_ditemukan['nama_lengkap']; ?></td></tr>
-        <tr><td style="padding:7px; font-weight:600; color:#475569; text-align:left; border-bottom:1px solid #f1f5f9;">Gelombang</td><td style="padding:7px; text-align:left; border-bottom:1px solid #f1f5f9;">: <b>Gelombang <?php echo $siswa_ditemukan['gelombang']; ?></b></td></tr>
+        <tr><td style="padding:7px; font-weight:600; color:#475569; text-align:left; border-bottom:1px solid #f1f5f9;">Jalur Seleksi</td><td style="padding:7px; text-align:left; border-bottom:1px solid #f1f5f9;">: <b><?php echo ($siswa_ditemukan['gelombang'] == 'Cadangan') ? 'Cadangan' : 'Gelombang ' . $siswa_ditemukan['gelombang']; ?></b></td></tr>
         <tr><td style="padding:7px; font-weight:600; color:#475569; text-align:left; border-bottom:1px solid #f1f5f9;">Tempat, Tgl Lahir</td><td style="padding:7px; text-align:left; border-bottom:1px solid #f1f5f9;">: <?php echo $siswa_ditemukan['tempat_lahir'] . ", " . tgl_indo_pengumuman($siswa_ditemukan['tanggal_lahir']); ?></td></tr>
         <tr><td style="padding:7px; font-weight:600; color:#475569; text-align:left; border-bottom:1px solid #f1f5f9;">NISN</td><td style="padding:7px; text-align:left; border-bottom:1px solid #f1f5f9;">: <?php echo $siswa_ditemukan['nisn']; ?></td></tr>
         <tr><td style="padding:7px; font-weight:600; color:#475569; text-align:left; border-bottom:1px solid #f1f5f9;">No. Ijazah / Sidanira</td><td style="padding:7px; text-align:left; border-bottom:1px solid #f1f5f9;">: <?php echo $siswa_ditemukan['no_ijazah']; ?></td></tr>
@@ -161,13 +162,15 @@ if (isset($_POST['cek'])) {
       </table>
 
       <div style="text-align: center; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-        <span style="font-size: 12.5px; color: #64748b; display: block;">Hasil Peringkat Kelulusan Gelombang <?php echo $siswa_ditemukan['gelombang']; ?>:</span>
+        <span style="font-size: 12.5px; color: #64748b; display: block;">Hasil Peringkat Kelulusan <?php echo ($gelombang_siswa == 'Cadangan') ? 'Cadangan' : 'Gelombang '.$gelombang_siswa; ?>:</span>
         <div style="font-size:26px; font-weight:800; color:#4f46e5; background:#e0e7ff; display:inline-block; padding:6px 20px; border-radius:12px; margin:10px 0;">Peringkat <?php echo $peringkat_siswa; ?></div>
 
-        <?php if ($siswa_ditemukan['status_konfirmasi'] == 'LULUS' || ($siswa_ditemukan['status_konfirmasi'] == 'Menunggu' && $peringkat_siswa <= $quota)): ?>
+        <?php if ($siswa_ditemukan['status_konfirmasi'] == 'LULUS' || ($siswa_ditemukan['status_konfirmasi'] == 'Menunggu' && $gelombang_siswa != 'Cadangan' && $peringkat_siswa <= $quota)): ?>
           <div class="alert alert-success" style="margin: 5px 0 0 0; font-weight: bold;">🎉 SELAMAT! ANDA MASUK KUOTA UTAMA SEKOLAH GRATIS</div>
         <?php elseif ($siswa_ditemukan['status_konfirmasi'] == 'Tidak Jadi'): ?>
           <div class="alert alert-danger" style="margin: 5px 0 0 0; font-weight: bold; background: #f3f4f6; color: #4b5563; border-color: #e5e7eb;">❌ STATUS: BATAL / MENGUNDURKAN DIRI</div>
+        <?php elseif ($gelombang_siswa == 'Cadangan'): ?>
+          <div class="alert alert-luar" style="margin: 5px 0 0 0; font-weight: bold; background: #fffbeb; color: #b45309; border-color: #fde68a;">⏳ STATUS: ANTRIAN CADANGAN (Menunggu Kuota Kosong)</div>
         <?php else: ?>
           <div class="alert alert-luar" style="margin: 5px 0 0 0; font-weight: bold;">❌ STATUS: DI LUAR KUOTA</div>
         <?php endif; ?>

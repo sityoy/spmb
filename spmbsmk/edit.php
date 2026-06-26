@@ -40,10 +40,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $no_whatsapp = mysqli_real_escape_string($conn, $_POST['no_whatsapp']);
     $pilihan_jurusan = mysqli_real_escape_string($conn, $_POST['pilihan_jurusan']);
 
-    // Tangkap data Nilai
+    // Tangkap data Nilai & Catatan
     $nilai_skl  = mysqli_real_escape_string($conn, $_POST['nilai_skl']);
     $nilai_tka  = mysqli_real_escape_string($conn, $_POST['nilai_tka']);
     $nilai_test = mysqli_real_escape_string($conn, $_POST['nilai_test']);
+    $catatan_panitia = mysqli_real_escape_string($conn, $_POST['catatan_panitia']); // <-- Tangkap Catatan Baru
     
     // Fungsi bantu untuk cek dan upload file baru
     function handleFileUpload($input_name, $old_file) {
@@ -59,8 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Validasi range input (Ditambah pengecualian angka 0 jika belum test)
-    if (($nilai_test < 75 && $nilai_test != 0) || $nilai_test > 100) {
-        echo "<script>alert('Nilai Uji Kejuruan (Test Panitia) harus 0 (Belum Ujian) atau berada di rentang 75 - 100!');</script>";
+    if (($nilai_test < 0 && $nilai_test != 0) || $nilai_test > 100) {
+        echo "<script>alert('Nilai Uji Kejuruan (Test Panitia) harus 0 (Belum Ujian) atau berada di rentang 0 - 100!');</script>";
     } elseif ($nilai_skl < 0 || $nilai_skl > 100 || $nilai_tka < 0 || $nilai_tka > 100) {
         echo "<script>alert('Nilai SKL dan TKA harus berada di rentang 0 - 100!');</script>";
     } else {
@@ -71,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $f_kk     = handleFileUpload('file_kk', $data['file_kk']);
         $f_akte   = handleFileUpload('file_akte', $data['file_akte']);
 
-        // Update semua data ke database
+        // Update semua data ke database (termasuk catatan_panitia)
         $update = mysqli_query($conn, "UPDATE pendaftar SET 
             nama_lengkap = '$nama_lengkap',
             nik = '$nik',
@@ -84,6 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             nilai_skl = '$nilai_skl', 
             nilai_tka = '$nilai_tka', 
             nilai_test = '$nilai_test',
+            catatan_panitia = '$catatan_panitia',
             file_ijazah = '$f_ijazah',
             file_tka = '$f_tka',
             file_kk = '$f_kk',
@@ -91,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             WHERE id = '$id'");
         
         if ($update) {
-            echo "<script>alert('Perubahan Data dan Nilai berhasil disimpan!'); window.location='admin.php?tab=$tab';</script>";
+            echo "<script>alert('Perubahan Data, Nilai, dan Catatan berhasil disimpan!'); window.location='admin.php?tab=$tab';</script>";
         } else {
             echo "<script>alert('Gagal menyimpan perubahan!');</script>";
         }
@@ -131,6 +133,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .section-title { color: #4f46e5; font-size: 16px; font-weight: 700; margin-bottom: 15px; }
         .info-box { background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13.5px; line-height: 1.6; border: 1px solid #e2e8f0; }
         .divider { border-top: 1px dashed #cbd5e1; margin: 25px 0 20px 0; }
+        
+        /* Highlight box catatan */
+        .catatan-box { background: #fff1f2; border: 1px solid #fecdd3; padding: 15px; border-radius: 8px; margin-top: 20px; }
+        .catatan-box textarea { border-color: #fda4af; }
+        .catatan-box textarea:focus { border-color: #e11d48; box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.1); }
     </style>
 </head>
 <body>
@@ -213,7 +220,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         value="<?php echo $data['nilai_test']; ?>" 
                         oninput="if(this.value > 100) this.value = 100; if(this.value.includes('.')){ let p=this.value.split('.'); if(p[1].length>2) this.value=p[0]+'.'+p[1].substring(0,2); }" required>
                     <small style="color:#64748b; font-size:11px; margin-top:6px; display:block; line-height:1.4;">
-                        *Isi <b>0</b> jika belum ujian. Jika sudah, rentang nilai <b>75.00 - 100.00</b>.<br>
+                        *Isi <b>0</b> jika belum ujian. Jika sudah, rentang nilai <b>00.00 - 100.00</b>.<br>
                         *Gunakan tanda <b>titik (.)</b> untuk angka desimal.
                     </small>
                 </div>
@@ -260,6 +267,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endif; ?>
                     <input type="file" name="file_akte" accept=".pdf,.jpg,.jpeg,.png">
                 </div>
+
+                <div class="catatan-box">
+                    <div class="section-title" style="color:#e11d48; margin-top:0; border-bottom-color:#fecdd3;">C. Catatan Evaluasi Panitia</div>
+                    <p style="font-size:12px; color:#9f1239; margin-top:0;">*Gunakan kolom ini untuk mencatat berkas yang kurang, buram, peringatan, atau hal lain terkait siswa ini.</p>
+                    
+                    <div class="form-group" style="margin-bottom:0;">
+                        <textarea name="catatan_panitia" placeholder="Contoh: File KK buram, minta bawa aslinya waktu daftar ulang..."><?php echo isset($data['catatan_panitia']) ? htmlspecialchars($data['catatan_panitia'], ENT_QUOTES, 'UTF-8') : ''; ?></textarea>
+                    </div>
+                </div>
+
             </div>
         </div>
 

@@ -11,31 +11,50 @@ if (!empty($_POST['website_checker'])) {
     die("Akses ditolak (Bot detected).");
 }
 
-// Tarik konfigurasi terpusat dari database pengaturan
 $pengaturan = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM pengaturan WHERE id = 1"));
 
 $gelombang_id     = (int)$pengaturan['gelombang_aktif'];
 $gelombang_aktif  = "Gelombang " . $gelombang_id;
-$max_kuota        = ($gelombang_id == 2) ? (int)$pengaturan['max_kuota_g2'] : (int)$pengaturan['max_kuota_g1'];
 
-// Menentukan status pendaftaran terbuka secara global
+$kuota_g1 = (int)$pengaturan['max_kuota_g1'];
+$kuota_g2 = (int)$pengaturan['max_kuota_g2'];
+
 $pendaftaran_buka = ($pengaturan['status_pendaftaran'] === 'buka');
 
 // ===================================================================
-// 2. HITUNG DATA PENDAFTAR REAL-TIME UNTUK KONTROL KUNCI KUOTA MASAL
+// 2. HITUNG KUOTA BERTINGKAT UNTUK LOGIKA OVERFLOW (LEMPAR GELOMBANG)
 // ===================================================================
 function hitungPendaftarGelombang($jurusan, $id_gel, $conn) {
     $q = mysqli_query($conn, "SELECT COUNT(*) as total FROM pendaftar WHERE pilihan_jurusan = '$jurusan' AND gelombang = '$id_gel'");
     return mysqli_fetch_assoc($q)['total'];
 }
 
-$total_akl  = hitungPendaftarGelombang('Akuntansi dan Keuangan Lembaga', $gelombang_id, $conn);
-$total_mplb = hitungPendaftarGelombang('Manajemen Perkantoran dan Layanan Bisnis', $gelombang_id, $conn);
+// Hitung Pendaftar AKL
+$total_akl_g1 = hitungPendaftarGelombang('Akuntansi dan Keuangan Lembaga', '1', $conn);
+$total_akl_g2 = hitungPendaftarGelombang('Akuntansi dan Keuangan Lembaga', '2', $conn);
 
-// KONDISI OTOMATIS: Jika kuota AKL dan MPLB sudah penuh semuanya, paksa sistem berhenti menerima pendaftar baru
-$kuota_habis_total = ($total_akl >= $max_kuota && $total_mplb >= $max_kuota);
-if ($kuota_habis_total) {
-    $pendaftaran_buka = false;
+if ($total_akl_g1 < $kuota_g1) {
+    $sisa = $kuota_g1 - $total_akl_g1;
+    $teks_akl = "Sisa Kuota Gel 1: $sisa Kursi";
+} elseif ($total_akl_g2 < $kuota_g2) {
+    $sisa = $kuota_g2 - $total_akl_g2;
+    $teks_akl = "Sisa Kuota Gel 2: $sisa Kursi (Gel 1 Penuh)";
+} else {
+    $teks_akl = "Masuk Antrian Cadangan (Kuota Penuh)";
+}
+
+// Hitung Pendaftar MPLB
+$total_mplb_g1 = hitungPendaftarGelombang('Manajemen Perkantoran dan Layanan Bisnis', '1', $conn);
+$total_mplb_g2 = hitungPendaftarGelombang('Manajemen Perkantoran dan Layanan Bisnis', '2', $conn);
+
+if ($total_mplb_g1 < $kuota_g1) {
+    $sisa = $kuota_g1 - $total_mplb_g1;
+    $teks_mplb = "Sisa Kuota Gel 1: $sisa Kursi";
+} elseif ($total_mplb_g2 < $kuota_g2) {
+    $sisa = $kuota_g2 - $total_mplb_g2;
+    $teks_mplb = "Sisa Kuota Gel 2: $sisa Kursi (Gel 1 Penuh)";
+} else {
+    $teks_mplb = "Masuk Antrian Cadangan (Kuota Penuh)";
 }
 
 $pesan = "";
@@ -45,7 +64,7 @@ $pesan = "";
 // ===================================================================
 if (isset($_POST['daftar'])) {
     if (!$pendaftaran_buka) {
-        die("Akses Ditolak: Pendaftaran saat ini sedang ditutup atau kuota sudah terpenuhi maksimal.");
+        die("Akses Ditolak: Pendaftaran saat ini sedang ditutup.");
     }
 
     $nama       = htmlspecialchars(strtoupper(trim(mysqli_real_escape_string($conn, $_POST['nama_lengkap']))));
@@ -64,7 +83,6 @@ if (isset($_POST['daftar'])) {
     $riwayat_penyakit = htmlspecialchars(trim(mysqli_real_escape_string($conn, $_POST['riwayat_penyakit'])));
     if (empty($riwayat_penyakit)) { $riwayat_penyakit = "Tidak Ada"; }
     
-    // Variabel Baru
     $alamat     = htmlspecialchars(trim(mysqli_real_escape_string($conn, $_POST['alamat'])));
     $kelurahan  = htmlspecialchars(ucwords(strtolower(trim(mysqli_real_escape_string($conn, $_POST['kelurahan'])))));
     $kecamatan  = htmlspecialchars(ucwords(strtolower(trim(mysqli_real_escape_string($conn, $_POST['kecamatan'])))));
@@ -78,7 +96,6 @@ if (isset($_POST['daftar'])) {
         }
     }
 
-    $cek_kuota_submit = hitungPendaftarGelombang($jurusan, $gelombang_id, $conn);
     $tanggal_lahir_obj = new DateTime($tgl_lahir);
     $hari_ini_obj      = new DateTime(); 
     $hitung_umur       = $hari_ini_obj->diff($tanggal_lahir_obj)->y;
@@ -103,11 +120,10 @@ if (isset($_POST['daftar'])) {
         }
     }
 
-    // UPDATE: Validasi Duplikat Menyertakan NIK
     $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn = '$nisn' OR no_kk = '$no_kk' OR nik = '$nik'";
     $hasil_cek    = mysqli_query($conn, $cek_duplikat);
 
-    // ANTI-HACK LOKASI (Server Side)
+    // ANTI-HACK LOKASI
     $jarak_tidak_valid = false;
     if (isset($_POST['lat']) && isset($_POST['long'])) {
         $lat = (float)$_POST['lat'];
@@ -135,8 +151,6 @@ if (isset($_POST['daftar'])) {
         $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Lokasi Anda tidak valid atau berada di luar area sekolah. Silakan lakukan Verifikasi Lokasi.</div>";
     } elseif (mysqli_num_rows($hasil_cek) > 0) {
         $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Maaf, NIK, NISN, Nomor Seri Ijazah, atau Nomor KK Anda sudah pernah terdaftar di sistem kami. Anda tidak bisa mendaftar ganda.</div>";
-    } elseif ($cek_kuota_submit >= $max_kuota) {
-        $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Maaf, Kuota untuk Jurusan tersebut pada " . $gelombang_aktif . " sudah penuh.</div>";
     } elseif (substr($no_kk, 0, 2) !== '31' || strlen($no_kk) !== 16) {
         $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Program Khusus ini hanya menerima warga pemilik KK resmi Provinsi DKI Jakarta.</div>";
     } elseif ($hitung_umur < 13 || $hitung_umur > 21) {
@@ -144,6 +158,19 @@ if (isset($_POST['daftar'])) {
     } elseif ($skl > 100 || $tka > 100 || $skl < 0 || $tka < 0) {
         $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Rentang penginputan nilai wajib berada di skala 0.00 - 100.00.</div>";
     } else {
+        
+        // PENENTUAN GELOMBANG / CADANGAN SECARA DINAMIS
+        $cek_g1 = hitungPendaftarGelombang($jurusan, '1', $conn);
+        $cek_g2 = hitungPendaftarGelombang($jurusan, '2', $conn);
+        
+        if ($cek_g1 < $pengaturan['max_kuota_g1']) {
+            $gelombang_final = '1';
+        } elseif ($cek_g2 < $pengaturan['max_kuota_g2']) {
+            $gelombang_final = '2';
+        } else {
+            $gelombang_final = 'Cadangan';
+        }
+
         $folder_tujuan = "uploads/";
         if (!is_dir($folder_tujuan)) { mkdir($folder_tujuan, 0777, true); }
 
@@ -185,12 +212,11 @@ if (isset($_POST['daftar'])) {
             move_uploaded_file($_FILES['file_sptjm']['tmp_name'], $folder_tujuan . $nama_sptjm) && $upload_kjp_status) {
             
             $no_pendaftaran = "SPMB-SMKPB1-" . date('Y') . "-" . rand(1000, 9999);
-            // Tambahkan baris ini di atas variabel $query
             $waktu_daftar = date('Y-m-d H:i:s');
             
-            // UPDATE: Insert Query menambahkan NIK, Alamat, Kelurahan, Kecamatan
+            // Insert data dengan $gelombang_final (Overflow System)
             $query = "INSERT INTO pendaftar (no_pendaftaran, nama_lengkap, nik, tempat_lahir, tanggal_lahir, nisn, no_ijazah, asal_sekolah, riwayat_penyakit, alamat, kelurahan, kecamatan, no_whatsapp, pilihan_jurusan, nilai_skl, nilai_tka, nilai_test, file_ijazah, file_tka, file_kk, file_akte, no_kk, status_konfirmasi, file_ktp_bapak, file_ktp_ibu, file_sptjm, status_kjp, no_rek_kjp, file_tabungan_kjp, gelombang, tanggal_daftar) 
-                      VALUES ('$no_pendaftaran', '$nama', '$nik', '$tmpl_lahir', '$tgl_lahir', '$nisn', '$no_ijazah', '$asal', '$riwayat_penyakit', '$alamat', '$kelurahan', '$kecamatan', '$wa', '$jurusan', '$skl', '$tka', '0.00', '$nama_ijazah', '$nama_tka', '$nama_kk', '$nama_akte', '$no_kk', 'Menunggu', '$nama_ktp_bapak', '$nama_ktp_ibu', '$nama_sptjm', '$status_kjp', '$no_rek_kjp', '$nama_tabungan_kjp', '$gelombang_id', '$waktu_daftar')";
+                      VALUES ('$no_pendaftaran', '$nama', '$nik', '$tmpl_lahir', '$tgl_lahir', '$nisn', '$no_ijazah', '$asal', '$riwayat_penyakit', '$alamat', '$kelurahan', '$kecamatan', '$wa', '$jurusan', '$skl', '$tka', '0.00', '$nama_ijazah', '$nama_tka', '$nama_kk', '$nama_akte', '$no_kk', 'Menunggu', '$nama_ktp_bapak', '$nama_ktp_ibu', '$nama_sptjm', '$status_kjp', '$no_rek_kjp', '$nama_tabungan_kjp', '$gelombang_final', '$waktu_daftar')";
 
             if (mysqli_query($conn, $query)) {
                 $_SESSION['izin_akses_bukti_' . $no_pendaftaran] = true;
@@ -306,17 +332,10 @@ if (isset($_POST['daftar'])) {
 
     <?php if (!$pendaftaran_buka): ?>
         <div class="time-alert-box">
-            <?php if ($kuota_habis_total): ?>
-                ⚠️ Mohon Maaf, Pendaftaran <?php echo $gelombang_aktif; ?> Ditutup Lebih Awal Karena Kuota Tampung Sekolah Sudah Terisi Penuh.<br>
-                <span style="font-size:13px; font-weight:500; color:#9a3412; display:block; margin-top:8px;">
-                    Terima kasih atas antusiasme besar seluruh calon peserta didik baru di SMKS Permata Bunda I Jakarta.
-                </span>
-            <?php else: ?>
-                ⚠️ Mohon Maaf, Sistem Penerimaan Siswa Baru Saat Ini Sedang Ditutup Sementara Oleh Panitia Admin.<br>
-                <span style="font-size:13px; font-weight:500; color:#9a3412; display:block; margin-top:8px;">
-                    Silakan hubungi pihak panitia sekolah untuk informasi jadwal pembukaan jalur berikutnya.
-                </span>
-            <?php endif; ?>
+            ⚠️ Mohon Maaf, Sistem Penerimaan Siswa Baru Saat Ini Sedang Ditutup Sementara Oleh Panitia Admin.<br>
+            <span style="font-size:13px; font-weight:500; color:#9a3412; display:block; margin-top:8px;">
+                Silakan hubungi pihak panitia sekolah untuk informasi jadwal pembukaan jalur berikutnya.
+            </span>
         </div>
     <?php else: ?>
         <form action="" method="POST" enctype="multipart/form-data">
@@ -416,20 +435,18 @@ if (isset($_POST['daftar'])) {
                     <select name="pilihan_jurusan" required>
                         <option value="">-- Silahkan Pilih Jurusan --</option>
                         
-                        <option value="Akuntansi dan Keuangan Lembaga" <?php if($total_akl >= $max_kuota) echo 'disabled style="color: #94a3b8; background: #f1f5f9;"'; ?>>
-                            Akuntansi dan Keuangan Lembaga (AKL) - Kuota: <?php echo $total_akl; ?>/<?php echo $max_kuota; ?> 
-                            <?php if($total_akl >= $max_kuota) echo ' [PENUH]'; ?>
+                        <option value="Akuntansi dan Keuangan Lembaga">
+                            Akuntansi dan Keuangan Lembaga (AKL) - <?php echo $teks_akl; ?>
                         </option>
                         
-                        <option value="Manajemen Perkantoran dan Layanan Bisnis" <?php if($total_mplb >= $max_kuota) echo 'disabled style="color: #94a3b8; background: #f1f5f9;"'; ?>>
-                            Manajamen Perkantoran dan Layanan Bisnis (MPLB) - Kuota: <?php echo $total_mplb; ?>/<?php echo $max_kuota; ?>
-                            <?php if($total_mplb >= $max_kuota) echo ' [PENUH]'; ?>
+                        <option value="Manajemen Perkantoran dan Layanan Bisnis">
+                            Manajamen Perkantoran dan Layanan Bisnis (MPLB) - <?php echo $teks_mplb; ?>
                         </option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label>Rata-rata Nilai SIDANIRA</label>
+                    <label>Rata-rata Nilai SIDANIRA / SKL</label>
                     <input type="number" name="nilai_skl" step="0.01" min="0" max="100" placeholder="0.00" 
                         oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0; if(this.value.includes('.')){ let p=this.value.split('.'); if(p[1].length>2) this.value=p[0]+'.'+p[1].substring(0,2); }" required>
                     <small style="color:#64748b; font-size:11px; margin-top:4px; display:block;">*Gunakan tanda <b>titik (.)</b> untuk desimal. Contoh: <b>79.99</b></small>
@@ -456,7 +473,7 @@ if (isset($_POST['daftar'])) {
                 </div>
 
                 <div class="form-group">
-                    <label>2. Scan Hasil Nilai TKA <span style="color:red;">*</span></label>
+                    <label>2. Scan Hasil Nilai TKA / SKHU <span style="color:red;">*</span></label>
                     <div class="custom-upload-box" id="box_tka">
                         <input type="file" name="file_tka" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_tka', 'box_tka')" required>
                         <span class="upload-icon">📄</span>

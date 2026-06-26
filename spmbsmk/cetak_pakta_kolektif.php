@@ -19,7 +19,7 @@ include 'koneksi.php';
 $gel_aktif = isset($_GET['gel']) ? preg_replace('/[^a-zA-Z0-9]/', '', $_GET['gel']) : 'Semua';
 
 $filter_gel = ($gel_aktif == 'Semua') ? "" : " WHERE gelombang = '$gel_aktif'";
-$label_gel = ($gel_aktif == 'Semua') ? "Semua Gelombang" : "Gelombang " . $gel_aktif;
+$label_gel = ($gel_aktif == 'Semua') ? "Semua Gelombang" : (($gel_aktif == 'Cadangan') ? "Cadangan / Antrian" : "Gelombang " . $gel_aktif);
 
 // Mengambil SEMUA siswa dari tabel, diurutkan berdasarkan jurusan dulu, baru nama abjad
 $query = mysqli_query($conn, "SELECT * FROM pendaftar $filter_gel ORDER BY pilihan_jurusan ASC, nama_lengkap ASC");
@@ -126,7 +126,7 @@ if (mysqli_num_rows($query) == 0) {
             <li><b>Dukungan Penuh Orang Tua:</b> Saya selaku Orang Tua/Wali akan mendukung penuh proses kegiatan belajar mengajar, aktif berkomunikasi dengan pihak sekolah, memastikan tingkat kehadiran anak saya di sekolah, serta turut mengawasi pergaulan anak di luar jam sekolah.</li>
         </ol>
 
-        <p style="text-align: justify; margin-bottom: 5px;">
+        <p style="text-align: justify; margin-bottom: 3px;">
             Demikian Pakta Integritas ini kami buat dengan sebenar-benarnya dalam keadaan sadar dan sehat jasmani maupun rohani untuk digunakan sebagaimana mestinya. Kami memahami bahwa kesepakatan ini mengikat secara moral, administratif, dan hukum.
         </p>
 
@@ -138,8 +138,8 @@ if (mysqli_num_rows($query) == 0) {
         <table class="ttd-table">
             <tr>
                 <td style="width: 35%; padding-bottom: 10px;">Orang Tua / Wali</td>
-                <td style="width: 30%;"></td>
-                <td style="width: 35%; padding-bottom: 40px;">Calon Siswa</td>
+                <td style="width: 25%;"></td>
+                <td style="width: 50%; padding-bottom: 40px;">Calon Siswa</td>
             </tr>
             <tr>
                 <td style="height: 80px; vertical-align: bottom;">
@@ -150,7 +150,7 @@ if (mysqli_num_rows($query) == 0) {
                 <td></td>
                 <td style="height: 80px; vertical-align: bottom;">
                     <br><br>
-                    (......................................................)<br>
+                    (<b><?php echo htmlspecialchars($data['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?></b>)<br>
                     Nama Jelas Calon Siswa
                 </td>
             </tr>

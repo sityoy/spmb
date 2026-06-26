@@ -64,14 +64,24 @@ if ($status_db == 'LULUS') {
     $alasan = !empty($data['alasan_pembatalan']) ? htmlspecialchars($data['alasan_pembatalan']) : "Mohon maaf, Anda belum dapat diterima pada seleksi kali ini.";
     $pesan_tambahan = "Keterangan: <b>" . $alasan . "</b>";
 } else {
-    $status_teks = "MENUNGGU PENGUMUMAN";
-    $status_warna_bg = "#fef3c7";
-    $status_warna_teks = "#b45309";
-    $status_border = "#f59e0b";
-    $pesan_tambahan = "Berkas Anda sedang dalam proses verifikasi dan penilaian oleh panitia seleksi.";
+    // Logika Khusus Tampilan Status untuk Cadangan
+    if ($data['gelombang'] == 'Cadangan') {
+        $status_teks = "ANTRIAN CADANGAN";
+        $status_warna_bg = "#fffbeb";
+        $status_warna_teks = "#b45309";
+        $status_border = "#fde68a";
+        $pesan_tambahan = "Pendaftaran Anda masuk ke antrian Cadangan. Kami akan menghubungi Anda jika terdapat kuota kosong dari pendaftar utama yang mengundurkan diri.";
+    } else {
+        $status_teks = "MENUNGGU PENGUMUMAN";
+        $status_warna_bg = "#fef3c7";
+        $status_warna_teks = "#b45309";
+        $status_border = "#f59e0b";
+        $pesan_tambahan = "Berkas Anda sedang dalam proses verifikasi dan penilaian oleh panitia seleksi.";
+    }
 }
 
 $jrs = ($data['pilihan_jurusan'] == "Akuntansi dan Keuangan Lembaga") ? "Akuntansi dan Keuangan Lembaga (AKL)" : "Manajemen Perkantoran dan Layanan Bisnis (MPLB)";
+$label_gel_bukti = ($data['gelombang'] == 'Cadangan') ? 'Cadangan / Antrian' : 'Gelombang ' . $data['gelombang'];
 
 $asli_skl = (float)$data['nilai_skl'];
 $asli_tka = (float)$data['nilai_tka'];
@@ -206,7 +216,7 @@ function tgl_indo($tanggal) {
         <img src="logo/logosmkpb.png" alt="Logo SMK PB1" style="max-height: 110px; width: auto; margin-bottom: 15px;">
         <h2>TANDA BUKTI PENDAFTARAN SPMB</h2>
         <p>SMKS PERMATA BUNDA I JAKARTA</p>
-        <p style="font-weight: 800; color: #059669;">Tahun Ajaran 2026/2027 (Jalur: <?php echo htmlspecialchars($data['gelombang'], ENT_QUOTES, 'UTF-8'); ?>)</p>
+        <p style="font-weight: 800; color: #059669;">Tahun Ajaran 2026/2027 (Jalur: <?php echo htmlspecialchars($label_gel_bukti, ENT_QUOTES, 'UTF-8'); ?>)</p>
     </div>
     
     <center style="font-size: 13px; font-weight:bold; color: #475569;">Nomor Pendaftaran:</center>
