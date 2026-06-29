@@ -1,6 +1,6 @@
 <?php 
 session_start();
-include 'koneksi.php';
+require_once __DIR__ . '/config/koneksi.php';
 
 // ===================================================================
 // 1. PENGATURAN KONTROL SISTEM DINAMIS BERBASIS DATABASE (ADMIN PANEL)

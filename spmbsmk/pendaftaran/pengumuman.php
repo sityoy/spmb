@@ -1,6 +1,6 @@
 <?php
 date_default_timezone_set('Asia/Jakarta');
-include 'koneksi.php';
+require_once __DIR__ . '/config/koneksi.php';
 
 $pesan = "";
 $tampil_hasil = false;

@@ -10,7 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 date_default_timezone_set('Asia/Jakarta');
 // --- TAMBAHAN ANTI-HACK ---
 if (!isset($_SESSION['login'])) {
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit;
 }
 
@@ -18,7 +18,7 @@ $_GET['tab'] = isset($_GET['tab']) ? preg_replace('/[^a-zA-Z0-9]/', '', $_GET['t
 $_GET['gel'] = isset($_GET['gel']) ? preg_replace('/[^a-zA-Z0-9]/', '', $_GET['gel']) : 'Semua';
 // --- END ANTI-HACK ---
 
-include 'koneksi.php';
+include '../config/koneksi.php';
 
 // Proses Update Jadwal & Pengaturan Kontrol Sistem masal
 if (isset($_POST['simpan_jadwal'])) {
@@ -174,7 +174,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
             <a href="cetak_pakta_kolektif.php?tab=<?php echo $tab_aktif; ?>&gel=<?php echo $gel_aktif; ?>" target="_blank" class="btn-action" style="background: #eab308; color: #fff;">🖨️ Cetak Pakta Kolektif</a>
             
             <button onclick="document.getElementById('modalJadwal').style.display='flex'" class="btn-action bg-edit" style="background:#8b5cf6;">⚙️ Setting Jadwal</button>
-            <a href="logout.php" class="btn-action bg-danger-btn" onclick="return confirm('Keluar sistem?')">Logout</a>
+            <a href="../logout.php" class="btn-action bg-danger-btn" onclick="return confirm('Keluar sistem?')">Logout</a>
         </div>
     </div>
 

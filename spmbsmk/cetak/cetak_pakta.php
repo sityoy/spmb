@@ -1,48 +1,36 @@
 <?php
-// ==========================================
-// SECURITY LAYER: SECURE SESSION START
-// ==========================================
-if (session_status() === PHP_SESSION_NONE) {
-    ini_set('session.cookie_httponly', 1);
-    ini_set('session.cookie_use_only_cookies', 1);
-    session_start();
-}
-date_default_timezone_set('Asia/Jakarta');
+// Pastikan file ini berada di folder yang sama dengan koneksi.php
+require_once __DIR__ . '/config/koneksi.php';
 
-if (!isset($_SESSION['login'])) {
-    die("Akses ditolak. Silakan login sebagai admin.");
-}
+// Menangkap ID atau No Pendaftaran dari URL
+$id_pendaftar = isset($_GET['id']) ? mysqli_real_escape_string($conn, $_GET['id']) : '';
 
-include 'koneksi.php';
-
-// Hanya fokus pada filter Gelombang, abaikan Tab jurusan agar AKL dan MPLB keambil semua
-$gel_aktif = isset($_GET['gel']) ? preg_replace('/[^a-zA-Z0-9]/', '', $_GET['gel']) : 'Semua';
-
-$filter_gel = ($gel_aktif == 'Semua') ? "" : " WHERE gelombang = '$gel_aktif'";
-$label_gel = ($gel_aktif == 'Semua') ? "Semua Gelombang" : (($gel_aktif == 'Cadangan') ? "Cadangan / Antrian" : "Gelombang " . $gel_aktif);
-
-// Mengambil SEMUA siswa dari tabel, diurutkan berdasarkan jurusan dulu, baru nama abjad
-$query = mysqli_query($conn, "SELECT * FROM pendaftar $filter_gel ORDER BY pilihan_jurusan ASC, nama_lengkap ASC");
+// Jika menggunakan no_pendaftaran di URL, ubah query WHERE id = '$id...' menjadi WHERE no_pendaftaran = '$id...'
+$query = mysqli_query($conn, "SELECT * FROM pendaftar WHERE id = '$id_pendaftar'");
 
 if (mysqli_num_rows($query) == 0) {
-    echo "<script>alert('Tidak ada data siswa pada filter ini!'); window.close();</script>";
+    echo "<script>alert('Data pendaftar tidak ditemukan!'); window.close();</script>";
     exit;
 }
+
+$data = mysqli_fetch_assoc($query);
+
+// Menentukan nama jurusan lengkap
+$jurusan = ($data['pilihan_jurusan'] == 'Akuntansi dan Keuangan Lembaga') ? 'Akuntansi dan Keuangan Lembaga (AKL)' : 'Manajemen Perkantoran dan Layanan Bisnis (MPLB)';
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cetak Pakta Integritas Kolektif - <?php echo $label_gel; ?></title>
+    <title>Cetak Pakta Integritas - <?php echo htmlspecialchars($data['nama_lengkap']); ?></title>
     <link rel="icon" type="image/x-icon" href="logo/logosmkpb.png">
     <style>
         /* Pengaturan ukuran kertas dan font untuk cetak (A4) */
         @page { size: A4; margin: 2cm; }
         body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; color: #000; background: #e2e8f0; margin: 0; padding: 20px 0; }
         
-        /* Container untuk tampilan layar */
-        .kertas-a4 { background: #fff; width: 210mm; min-height: 297mm; margin: 0 auto 20px auto; padding: 2cm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; }
+        .kertas-a4 { background: #fff; width: 210mm; min-height: 297mm; margin: 0 auto; padding: 2cm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; }
         
         .judul-surat { text-align: center; font-weight: bold; margin-bottom: 25px; line-height: 1.3; }
         .judul-surat span { text-decoration: underline; font-size: 14pt; }
@@ -52,41 +40,31 @@ if (mysqli_num_rows($query) == 0) {
         .list-poin li { margin-bottom: 10px; }
         
         /* Tombol Cetak (Hanya tampil di layar, hilang saat diprint) */
-        .btn-print-area { text-align: center; margin-bottom: 20px; position: sticky; top: 10px; z-index: 100; }
-        .btn { padding: 12px 25px; font-size: 15px; font-weight: bold; border-radius: 8px; cursor: pointer; text-decoration: none; border: none; color: white; display: inline-block; margin: 0 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .btn-cetak { background: #eab308; color: #000; }
+        .btn-print-area { text-align: center; margin-bottom: 20px; }
+        .btn { padding: 10px 20px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; text-decoration: none; border: none; color: white; display: inline-block; margin: 0 5px; }
+        .btn-cetak { background: #4f46e5; }
         .btn-kembali { background: #64748b; }
         
         /* Tabel Tanda Tangan Sesuai Desain */
         .ttd-table { width: 100%; border-collapse: collapse; text-align: left; margin-top: 30px; }
         .ttd-table td { vertical-align: top; }
         
-        /* CSS KHUSUS PRINT */
         @media print {
             body { background: #fff; padding: 0; }
             .kertas-a4 { box-shadow: none; padding: 0; width: 100%; min-height: auto; margin: 0; }
             .btn-print-area { display: none; }
             @page { margin: 1.5cm; }
-            
-            /* INI YANG MEMBUAT SETIAP SISWA DI-PRINT DI HALAMAN BARU */
-            .page-break { page-break-after: always; }
-            .page-break:last-child { page-break-after: auto; }
         }
     </style>
 </head>
 <body>
 
     <div class="btn-print-area">
-        <button onclick="window.print()" class="btn btn-cetak">🖨️ Cetak Seluruh Pakta (<?php echo mysqli_num_rows($query); ?> Siswa)</button>
+        <button onclick="window.print()" class="btn btn-cetak">🖨️ Cetak Pakta Integritas</button>
         <button onclick="window.close()" class="btn btn-kembali">Tutup Halaman</button>
     </div>
 
-    <?php 
-    while ($data = mysqli_fetch_assoc($query)): 
-        // Deteksi singkatan jurusan masing-masing siswa
-        $jurusan_siswa = ($data['pilihan_jurusan'] == 'Akuntansi dan Keuangan Lembaga') ? 'Akuntansi dan Keuangan Lembaga (AKL)' : 'Manajemen Perkantoran dan Layanan Bisnis (MPLB)';
-    ?>
-    <div class="kertas-a4 page-break">
+    <div class="kertas-a4">
         <div class="judul-surat">
             <span>SURAT PERNYATAAN / PAKTA INTEGRITAS</span><br>
             PESERTA DIDIK BARU DAN ORANG TUA/WALI<br>
@@ -106,10 +84,10 @@ if (mysqli_num_rows($query) == 0) {
 
         <b>II. Biodata Calon Peserta Didik</b>
         <div style="margin-top: 5px; margin-bottom: 15px;">
-            <div class="biodata-grid"><div>Nama Lengkap</div><div>:</div><div><b><?php echo htmlspecialchars($data['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?></b></div></div>
-            <div class="biodata-grid"><div>NISN</div><div>:</div><div><?php echo htmlspecialchars($data['nisn'], ENT_QUOTES, 'UTF-8'); ?></div></div>
-            <div class="biodata-grid"><div>Asal Sekolah</div><div>:</div><div><?php echo htmlspecialchars($data['asal_sekolah'], ENT_QUOTES, 'UTF-8'); ?></div></div>
-            <div class="biodata-grid"><div>Pilihan Jurusan</div><div>:</div><div><b><?php echo $jurusan_siswa; ?></b></div></div>
+            <div class="biodata-grid"><div>Nama Lengkap</div><div>:</div><div><b><?php echo htmlspecialchars($data['nama_lengkap']); ?></b></div></div>
+            <div class="biodata-grid"><div>NISN</div><div>:</div><div><?php echo htmlspecialchars($data['nisn']); ?></div></div>
+            <div class="biodata-grid"><div>Asal Sekolah</div><div>:</div><div><?php echo htmlspecialchars($data['asal_sekolah']); ?></div></div>
+            <div class="biodata-grid"><div>Pilihan Jurusan</div><div>:</div><div><?php echo $jurusan; ?></div></div>
         </div>
 
         <p style="text-align: justify; margin-top: 20px;">
@@ -126,47 +104,53 @@ if (mysqli_num_rows($query) == 0) {
             <li><b>Dukungan Penuh Orang Tua:</b> Saya selaku Orang Tua/Wali akan mendukung penuh proses kegiatan belajar mengajar, aktif berkomunikasi dengan pihak sekolah, memastikan tingkat kehadiran anak saya di sekolah, serta turut mengawasi pergaulan anak di luar jam sekolah.</li>
         </ol>
 
-        <p style="text-align: justify; margin-bottom: 3px;">
+        <p style="text-align: justify; margin-bottom: 25px;">
             Demikian Pakta Integritas ini kami buat dengan sebenar-benarnya dalam keadaan sadar dan sehat jasmani maupun rohani untuk digunakan sebagaimana mestinya. Kami memahami bahwa kesepakatan ini mengikat secara moral, administratif, dan hukum.
         </p>
 
-        <div style="text-align: right; margin-bottom: 5px;">
+        <div style="text-align: right; margin-bottom: 10px;">
             Jakarta, .................................. <?php echo date('Y'); ?>
         </div>
 
-        <p style="margin-bottom: 1px;">Mengetahui dan Menyetujui,</p>
+        <p style="margin-bottom: 5px;">Mengetahui dan Menyetujui,</p>
         <table class="ttd-table">
             <tr>
                 <td style="width: 35%; padding-bottom: 10px;">Orang Tua / Wali</td>
-                <td style="width: 25%;"></td>
-                <td style="width: 50%; padding-bottom: 40px;">Calon Siswa</td>
+                <td style="width: 30%;"></td>
+                <td style="width: 35%; padding-bottom: 10px;">Calon Peserta Didik Baru</td>
             </tr>
             <tr>
                 <td style="height: 80px; vertical-align: bottom;">
-                    <!-- <span style="font-size: 10px; color: #666; border: 1px dashed #999; padding: 2px 10px; display: inline-block; margin-bottom: 5px;">Meterai Rp10.000</span><br> -->
+                    <span style="font-size: 10px; color: #666; border: 1px dashed #999; padding: 2px 10px; display: inline-block; margin-bottom: 5px;">Meterai Rp10.000</span><br>
                     (......................................................)<br>
                     Nama Jelas Orang Tua/Wali
                 </td>
                 <td></td>
                 <td style="height: 80px; vertical-align: bottom;">
                     <br><br>
-                    (<b><?php echo htmlspecialchars($data['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?></b>)<br>
-                    Nama Jelas Calon Siswa
+                    (......................................................)<br>
+                    Nama Jelas Calon Peserta Didik Baru
                 </td>
             </tr>
             <tr>
-                <td colspan="3" style="height: 2px;"></td>
+                <td colspan="3" style="height: 30px;"></td> <!-- Spasi kosong -->
             </tr>
             <tr>
-                <td colspan="3" style="text-align: center; padding-bottom: 20px; padding-top: 20px;">
-                    Kepala Sekolah<br><br><br><br><br>
+                <td></td>
+                <td style="text-align: left;">Kepala Sekolah</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td style="height: 90px; vertical-align: bottom; text-align: left;">
                     <b>H. Hery Darda, S.Sos, M.Pd</b><br>
                     NIP. ........................................
                 </td>
+                <td></td>
             </tr>
         </table>
+
     </div>
-    <?php endwhile; ?>
 
 </body>
 </html>

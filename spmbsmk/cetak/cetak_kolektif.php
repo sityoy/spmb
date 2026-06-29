@@ -14,7 +14,7 @@ if (!isset($_SESSION['login'])) {
     exit;
 }
 
-include 'koneksi.php';
+require_once __DIR__ . '/config/koneksi.php';
 
 // Ambil parameter filter gelombang (jika ada lemparan dari halaman admin)
 $gel_aktif = isset($_GET['gel']) ? $_GET['gel'] : 'Semua';

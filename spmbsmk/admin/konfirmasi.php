@@ -15,7 +15,7 @@ if (!isset($_SESSION['login'])) {
     exit;
 }
 
-include 'koneksi.php';
+require_once __DIR__ . '/config/koneksi.php';
 
 // Validasi parameter wajib
 if (isset($_GET['id']) && isset($_GET['status'])) {

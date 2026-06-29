@@ -1,6 +1,6 @@
 <?php
 date_default_timezone_set('Asia/Jakarta');
-include 'koneksi.php';
+require_once __DIR__ . '/config/koneksi.php';
 
 // Menentukan parameter Gelombang yang dipilih (dukung string Cadangan)
 $gelombang = isset($_GET['gelombang']) ? $_GET['gelombang'] : '1';

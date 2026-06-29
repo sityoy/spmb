@@ -58,7 +58,7 @@ date_default_timezone_set('Asia/Jakarta');
             margin: 0;
             font-size: 16px;
             font-weight: 800;
-            color: var(--primary);
+            color: var(--primary);a
         }
         .logo-title p {
             margin: 0;
@@ -305,7 +305,7 @@ date_default_timezone_set('Asia/Jakarta');
                 <a href="#">Beranda</a>
                 <a href="#jurusan">Kompetensi</a>
                 <a href="#alur">Alur PPDB</a>
-                <a href="spmbsmk/admin.php">Login Admin</a>
+                <a href="spmbsmk/admin/admin.php">Login Admin</a>
                 <a href="spmbsmk/index.php" class="btn-spmb-nav">Portal SPMB Online 📝</a>
             </div>
         </div>

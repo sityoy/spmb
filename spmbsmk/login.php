@@ -1,10 +1,10 @@
 <?php
 session_start();
-include 'koneksi.php';
+require_once __DIR__ . '/config/koneksi.php';
 
 if (isset($_SESSION['login'])) {
-    header("Location: admin.php");
-    exit;
+header("Location: ../admin/admin.php");
+exit;
 }
 
 $pesan = "";

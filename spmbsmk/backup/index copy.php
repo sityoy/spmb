@@ -1,5 +1,5 @@
 <?php 
-include 'koneksi.php'; 
+require_once __DIR__ . '/config/koneksi.php'; 
 
 // 1. HITUNG KUOTA REAL-TIME DARI DATABASE
 $query_akl  = "SELECT COUNT(*) as total FROM pendaftar WHERE pilihan_jurusan = 'Akuntansi dan Keuangan Lembaga'";

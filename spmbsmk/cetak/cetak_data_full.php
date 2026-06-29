@@ -8,7 +8,7 @@ if (!isset($_SESSION['login'])) {
     die("Akses Ditolak. Silakan login sebagai admin.");
 }
 
-include 'koneksi.php';
+require_once __DIR__ . '/config/koneksi.php';
 
 $gel = isset($_GET['gel']) ? mysqli_real_escape_string($conn, $_GET['gel']) : 'Semua';
 

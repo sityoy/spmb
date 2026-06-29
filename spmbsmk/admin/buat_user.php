@@ -1,6 +1,6 @@
 <?php
 // Hubungkan ke database
-include 'koneksi.php';
+require_once __DIR__ . '/config/koneksi.php';
 
 // Sesuaikan nama tabel jika berbeda (biasanya 'admin' atau 'users')
 // Berdasarkan gambar struktur tabel Anda, kemungkinan namanya 'admin'

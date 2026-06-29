@@ -1,6 +1,6 @@
 <?php
 session_start();
-include 'koneksi.php';
+require_once __DIR__ . '/config/koneksi.php';
 
 // Update status di database sebelum sesi dihancurkan
 // Anda perlu menyimpan ID user di sesi saat login tadi

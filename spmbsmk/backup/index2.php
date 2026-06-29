@@ -1,5 +1,5 @@
 <?php 
-include 'koneksi.php'; 
+require_once __DIR__ . '/config/koneksi.php'; 
 
 // 1. HITUNG KUOTA REAL-TIME DARI DATABASE SECARA SPESIFIK
 function hitungKuota($jurusan, $status, $conn) {

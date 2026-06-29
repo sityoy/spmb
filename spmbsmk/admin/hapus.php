@@ -10,7 +10,7 @@ if (!isset($_SESSION['login'])) {
     exit;
 }
 
-include 'koneksi.php';
+require_once __DIR__ . '/config/koneksi.php';
 
 if (isset($_GET['id'])) {
     $id = mysqli_real_escape_string($conn, $_GET['id']);
