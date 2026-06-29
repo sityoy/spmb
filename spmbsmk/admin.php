@@ -78,7 +78,11 @@ $order_logic = "ORDER BY CASE status_konfirmasi
                     WHEN 'LULUS' THEN 1 
                     WHEN 'Menunggu' THEN 2 
                     WHEN 'Tidak Jadi' THEN 3 
-                END ASC, nilai_akhir_sql DESC, tanggal_daftar ASC";
+                END ASC, 
+                nilai_akhir_sql DESC, 
+                tanggal_lahir ASC, 
+                tanggal_daftar ASC, 
+                id ASC";
 
 $rumus_nilai = "((((nilai_skl * 0.7) + (nilai_tka * 0.3))) + nilai_test) / 2";
 
@@ -329,7 +333,8 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                                 <?php if($row['status_konfirmasi'] == 'Menunggu'): ?>
                                     <a href="edit.php?id=<?php echo $row['id']; ?>&tab=akl" class="btn-action bg-edit">Edit Siswa/Nilai</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=LULUS&tab=akl" class="btn-action bg-success-btn" onclick="return confirm('Kunci kelulusan untuk siswa ini?')">Lulus</a>
-                                    <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=mplb" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan MPLB?')">Lempar MPLB</a>
+                                    <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=akl" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan MPLB?')">Lempar MPLB</a>
+                                    <a href="#" class="btn-action" style="background:#f97316;" onclick="pindahGelombang(<?php echo $row['id']; ?>, 'akl'); return false;">🔄 Lempar Gel</a>
                                     <a href="#" class="btn-action bg-danger-btn" onclick="let alasan = prompt('Masukkan alasan tidak lulus/batal untuk siswa ini:'); if(alasan === null) return false; if(alasan.trim() === '') { alert('Alasan wajib diisi!'); return false; } window.location.href='konfirmasi.php?id=<?php echo $row['id']; ?>&status=Tidak Jadi&tab=akl&alasan=' + encodeURIComponent(alasan); return false;">Tidak Lulus</a>
                                 <?php else: ?>
                                     <a href="edit.php?id=<?php echo $row['id']; ?>&tab=akl" class="btn-action bg-edit">Edit Data/Nilai</a>
@@ -457,6 +462,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                                     <a href="edit.php?id=<?php echo $row['id']; ?>&tab=mplb" class="btn-action bg-edit">Edit Siswa/Nilai</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=LULUS&tab=mplb" class="btn-action bg-success-btn" onclick="return confirm('Kunci kelulusan untuk siswa ini?')">Lulus</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=akl" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan AKL?')">Lempar AKL</a>
+                                    <a href="#" class="btn-action" style="background:#f97316;" onclick="pindahGelombang(<?php echo $row['id']; ?>, 'akl'); return false;">🔄 Lempar Gel</a>
                                     <a href="#" class="btn-action bg-danger-btn" onclick="let alasan = prompt('Masukkan alasan tidak lulus/batal untuk siswa ini:'); if(alasan === null) return false; if(alasan.trim() === '') { alert('Alasan wajib diisi!'); return false; } window.location.href='konfirmasi.php?id=<?php echo $row['id']; ?>&status=Tidak Jadi&tab=mplb&alasan=' + encodeURIComponent(alasan); return false;">Tidak Lulus</a>
                                 <?php else: ?>
                                     <a href="edit.php?id=<?php echo $row['id']; ?>&tab=mplb" class="btn-action bg-edit">Edit Data/Nilai</a>
@@ -540,6 +546,24 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
     </div>
 
     <script>
+
+    function pindahGelombang(id, tabAsal) {
+        let gel = prompt("Pindahkan siswa ini ke Gelombang mana?\n\nKetik salah satu:\n- 1\n- 2\n- Cadangan");
+        if (gel !== null) {
+            gel = gel.trim();
+            let gel_valid = "";
+            if (gel === "1") gel_valid = "1";
+            else if (gel === "2") gel_valid = "2";
+            else if (gel.toLowerCase() === "cadangan") gel_valid = "Cadangan";
+            
+            if (gel_valid !== "") {
+                window.location.href = "konfirmasi.php?id=" + id + "&status=PindahGelombang&ke_gelombang=" + gel_valid + "&tab=" + tabAsal;
+            } else {
+                alert("Gagal: Input tidak valid. Harus mengetik 1, 2, atau Cadangan.");
+            }
+        }
+    }
+    
     function toggleTabel(idPanel, tombol, namaTab) {
         document.querySelectorAll('.panel-tabel').forEach(p => p.classList.remove('terbuka'));
         document.querySelectorAll('.btn-toggle-jurusan').forEach(b => b.classList.remove('aktif'));

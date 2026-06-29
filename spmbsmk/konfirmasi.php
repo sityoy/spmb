@@ -33,21 +33,16 @@ if (isset($_GET['id']) && isset($_GET['status'])) {
         $query = "UPDATE pendaftar SET status_konfirmasi = 'LULUS' WHERE id = '$id'";
         $execute = mysqli_query($conn, $query);
         $msg = "Status siswa berhasil diperbarui menjadi LULUS!";
-        
-    } elseif ($status_request == 'Tidak Jadi') {
-        // 2. Aksi Pembatalan (Tidak Jadi) BESERTA ALASANNYA
-        $query = "UPDATE pendaftar SET status_konfirmasi = 'Tidak Jadi', alasan_pembatalan = '$alasan' WHERE id = '$id'";
-        $execute = mysqli_query($conn, $query);
-        $msg = "Siswa telah dibatalkan dengan alasan: " . $alasan;
-        
-    } elseif ($status_request == 'Reset') {
-        // 3. Aksi Reset Status ke Menunggu Antrian (Alasan otomatis dikosongkan lagi)
+    } elseif ($status_request == 'Menunggu') {
         $query = "UPDATE pendaftar SET status_konfirmasi = 'Menunggu', alasan_pembatalan = '' WHERE id = '$id'";
         $execute = mysqli_query($conn, $query);
-        $msg = "Status kelulusan siswa berhasil di-reset.";
-        
+        $msg = "Status siswa berhasil dikembalikan menjadi Menunggu!";
+    } elseif ($status_request == 'Tidak Jadi') {
+        $query = "UPDATE pendaftar SET status_konfirmasi = 'Tidak Jadi', alasan_pembatalan = '$alasan' WHERE id = '$id'";
+        $execute = mysqli_query($conn, $query);
+        $msg = "Siswa dibatalkan/tidak lulus!";
     } elseif ($status_request == 'Pindah') {
-        // 4. LOGIKA CERDAS: Lempar / Pindah Jurusan Otomatis
+        // Logic pindah jurusan
         $cek_data = mysqli_query($conn, "SELECT nama_lengkap, pilihan_jurusan FROM pendaftar WHERE id = '$id'");
         $data_siswa = mysqli_fetch_assoc($cek_data);
         
@@ -69,6 +64,12 @@ if (isset($_GET['id']) && isset($_GET['status'])) {
             $execute = mysqli_query($conn, $query);
             $msg = "Berhasil melempar $nama ke jurusan $nama_jurusan_baru!";
         }
+    } elseif ($status_request == 'PindahGelombang') {
+        // --- LOGIKA BARU: PINDAH GELOMBANG ---
+        $ke_gelombang = isset($_GET['ke_gelombang']) ? mysqli_real_escape_string($conn, $_GET['ke_gelombang']) : '1';
+        $query = "UPDATE pendaftar SET gelombang = '$ke_gelombang' WHERE id = '$id'";
+        $execute = mysqli_query($conn, $query);
+        $msg = "Berhasil memindahkan siswa ke Gelombang $ke_gelombang!";
     }
 
     // Redirect kembali ke admin.php dengan tab yang sesuai
@@ -84,7 +85,7 @@ if (isset($_GET['id']) && isset($_GET['status'])) {
               </script>";
     }
 } else {
-    // Jika diakses ilegal tanpa parameter, tendang ke dashboard
+    // Jika diakses langsung tanpa parameter
     header("Location: admin.php");
     exit;
 }

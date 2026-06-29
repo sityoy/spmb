@@ -446,7 +446,7 @@ if (isset($_POST['daftar'])) {
                 </div>
 
                 <div class="form-group">
-                    <label>Rata-rata Nilai SIDANIRA / SKL</label>
+                    <label>Rata-rata Nilai SIDANIRA</label>
                     <input type="number" name="nilai_skl" step="0.01" min="0" max="100" placeholder="0.00" 
                         oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0; if(this.value.includes('.')){ let p=this.value.split('.'); if(p[1].length>2) this.value=p[0]+'.'+p[1].substring(0,2); }" required>
                     <small style="color:#64748b; font-size:11px; margin-top:4px; display:block;">*Gunakan tanda <b>titik (.)</b> untuk desimal. Contoh: <b>79.99</b></small>
