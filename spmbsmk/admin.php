@@ -80,7 +80,7 @@ $order_logic = "ORDER BY CASE status_konfirmasi
                     WHEN 'Tidak Jadi' THEN 3 
                 END ASC, nilai_akhir_sql DESC, tanggal_daftar ASC";
 
-$rumus_nilai = "(((((nilai_skl * 0.7) + (nilai_tka * 0.3)) / 2) + nilai_test) / 2)";
+$rumus_nilai = "((((nilai_skl * 0.7) + (nilai_tka * 0.3))) + nilai_test) / 2";
 
 $query_akl = "SELECT *, $rumus_nilai as nilai_akhir_sql FROM pendaftar WHERE pilihan_jurusan = 'Akuntansi dan Keuangan Lembaga' $sql_gel_filter $sql_search_filter $order_logic";
 $result_akl = mysqli_query($conn, $query_akl);
@@ -273,7 +273,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                             $bobot_tka = $asli_tka * 0.30;
                             
                             $nilai_berkas_asli = ($asli_skl + $asli_tka) / 2;
-                            $nilai_berkas_bobot = ($bobot_skl + $bobot_tka) / 2;
+                            $nilai_berkas_bobot = $bobot_skl + $bobot_tka;
                             
                             $nilai_test = (float)$row['nilai_test'];
                             $nilai_akhir_total = ($nilai_berkas_bobot + $nilai_test) / 2;
@@ -311,7 +311,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                                     TKA Asli: <b><?php echo number_format($asli_tka, 2); ?></b> &rarr; Bobot 30%: <b style="color:#1e293b;"><?php echo number_format($bobot_tka, 2); ?></b>
                                 </div>
                                 <span class="small-text" style="color:#64748b;">Berkas Asli (Rata2): <b><?php echo number_format($nilai_berkas_asli, 2); ?></b></span>
-                                <span class="small-text" style="color:#0284c7;">Berkas Bobot (/2): <b><?php echo number_format($nilai_berkas_bobot, 2); ?></b></span>
+                                <span class="small-text" style="color:#0284c7;">Berkas Bobot (70%+30%): <b><?php echo number_format($nilai_berkas_bobot, 2); ?></b></span>
                                 
                                 <span class="small-text" style="color:#f59e0b; margin-top:4px;">
                                     Uji Test: <b><?php echo ($nilai_test > 0) ? number_format($nilai_test, 2) : '0.00 (Belum Ujian)'; ?></b>
@@ -401,7 +401,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                             $bobot_tka = $asli_tka * 0.30;
                             
                             $nilai_berkas_asli = ($asli_skl + $asli_tka) / 2;
-                            $nilai_berkas_bobot = ($bobot_skl + $bobot_tka) / 2;
+                            $nilai_berkas_bobot = $bobot_skl + $bobot_tka;
                             
                             $nilai_test = (float)$row['nilai_test'];
                             $nilai_akhir_total = ($nilai_berkas_bobot + $nilai_test) / 2;
@@ -439,7 +439,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                                     TKA Asli: <b><?php echo number_format($asli_tka, 2); ?></b> &rarr; Bobot 30%: <b style="color:#1e293b;"><?php echo number_format($bobot_tka, 2); ?></b>
                                 </div>
                                 <span class="small-text" style="color:#64748b;">Berkas Asli (Rata2): <b><?php echo number_format($nilai_berkas_asli, 2); ?></b></span>
-                                <span class="small-text" style="color:#0284c7;">Berkas Bobot (/2): <b><?php echo number_format($nilai_berkas_bobot, 2); ?></b></span>
+                                <span class="small-text" style="color:#0284c7;">Berkas Bobot (70%+30%): <b><?php echo number_format($nilai_berkas_bobot, 2); ?></b></span>
                                 
                                 <span class="small-text" style="color:#f59e0b; margin-top:4px;">
                                     Uji Test: <b><?php echo ($nilai_test > 0) ? number_format($nilai_test, 2) : '0.00 (Belum Ujian)'; ?></b>

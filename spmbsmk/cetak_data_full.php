@@ -16,7 +16,7 @@ $filter_and = ($gel == 'Semua') ? "" : "AND gelombang = '$gel'";
 $label_gel  = ($gel == 'Semua') ? "Semua Gelombang" : (($gel == 'Cadangan') ? "Cadangan / Antrian" : "Gelombang " . $gel);
 
 // Rumus Nilai untuk sorting
-$rumus_nilai = "(((((nilai_skl * 0.7) + (nilai_tka * 0.3)) / 2) + nilai_test) / 2)";
+$rumus_nilai = "((((nilai_skl * 0.7) + (nilai_tka * 0.3))) + nilai_test) / 2";
 $order_logic = "ORDER BY CASE status_konfirmasi WHEN 'LULUS' THEN 1 WHEN 'Menunggu' THEN 2 WHEN 'Tidak Jadi' THEN 3 END ASC, nilai_akhir_sql DESC, nama_lengkap ASC";
 
 $q_akl = mysqli_query($conn, "SELECT *, $rumus_nilai as nilai_akhir_sql FROM pendaftar WHERE pilihan_jurusan = 'Akuntansi dan Keuangan Lembaga' $filter_and $order_logic");

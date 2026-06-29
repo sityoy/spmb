@@ -69,8 +69,8 @@ if (isset($_POST['cek'])) {
       } else {
         $quota = ($gelombang_siswa == '1') ? (int)$pengaturan['max_kuota_g1'] : (($gelombang_siswa == '2') ? (int)$pengaturan['max_kuota_g2'] : 0);
 
-        $query_rank = "SELECT id, ((nilai_skl + nilai_tka) / 2) as nilai_akhir 
-               FROM pendaftar 
+        $query_rank = "SELECT id, ((((nilai_skl * 0.70) + (nilai_tka * 0.30))) + nilai_test) / 2 as nilai_akhir 
+               FROM pendaftar
                WHERE pilihan_jurusan = '$jurusan_siswa' AND gelombang = '$gelombang_siswa'
                ORDER BY CASE status_konfirmasi 
                 WHEN 'LULUS' THEN 1 
@@ -88,7 +88,11 @@ if (isset($_POST['cek'])) {
         }
 
         $tampil_hasil = true;
-        $nilai_akhir = ($siswa_ditemukan['nilai_skl'] + $siswa_ditemukan['nilai_tka']) / 2;
+        $asli_skl = (float)$siswa_ditemukan['nilai_skl'];
+        $asli_tka = (float)$siswa_ditemukan['nilai_tka'];
+        $nilai_berkas_bobot = ($asli_skl * 0.70) + ($asli_tka * 0.30);
+        $nilai_test = (float)$siswa_ditemukan['nilai_test'];
+        $nilai_akhir = ($nilai_berkas_bobot + $nilai_test) / 2;
         $singkatan_jurusan = ($jurusan_siswa == "Akuntansi dan Keuangan Lembaga") ? "Akuntansi dan Keuangan Lembaga" : "Manajemen Perkantoran dan Layanan Bisnis";
       }
     } else {

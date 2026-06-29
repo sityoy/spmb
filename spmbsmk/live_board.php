@@ -43,7 +43,7 @@ $order_logic = "ORDER BY CASE status_konfirmasi
                 END ASC, nilai_akhir DESC, tanggal_daftar ASC";
 
 if (!$is_locked) {
-    $rumus_sql = "(((((nilai_skl * 0.7) + (nilai_tka * 0.3)) / 2) + nilai_test) / 2)";
+    $rumus_sql = "((((nilai_skl * 0.7) + (nilai_tka * 0.3))) + nilai_test) / 2";
 
     $query_live_akl = "SELECT *, $rumus_sql as nilai_akhir 
                        FROM pendaftar 
@@ -220,7 +220,7 @@ if (!$is_locked) {
                         $bobot_skl = $asli_skl * 0.70;
                         $bobot_tka = $asli_tka * 0.30;
                         $nilai_berkas_asli = ($asli_skl + $asli_tka) / 2;
-                        $nilai_berkas_bobot = ($bobot_skl + $bobot_tka) / 2;
+                        $nilai_berkas_bobot = $bobot_skl + $bobot_tka;
                         $nilai_test = (float)$row['nilai_test'];
                         $nilai_akhir_fix = ($nilai_berkas_bobot + $nilai_test) / 2;
                         
@@ -288,7 +288,7 @@ if (!$is_locked) {
                         $bobot_skl = $asli_skl * 0.70;
                         $bobot_tka = $asli_tka * 0.30;
                         $nilai_berkas_asli = ($asli_skl + $asli_tka) / 2;
-                        $nilai_berkas_bobot = ($bobot_skl + $bobot_tka) / 2;
+                        $nilai_berkas_bobot = $bobot_skl + $bobot_tka;
                         $nilai_test = (float)$row['nilai_test'];
                         $nilai_akhir_fix = ($nilai_berkas_bobot + $nilai_test) / 2;
                         
@@ -351,7 +351,7 @@ if (!$is_locked) {
         </div>
 
         <div class="info-row bold" style="padding:0 5px;">
-            <span>Gabungan Berkas (Bagi 2)</span>
+            <span>Gabungan Berkas (70% + 30%)</span>
             <span id="mdl_gab_berkas"></span>
         </div>
         <div class="info-row bold" style="padding:0 5px;">

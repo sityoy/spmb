@@ -83,12 +83,13 @@ if ($status_db == 'LULUS') {
 $jrs = ($data['pilihan_jurusan'] == "Akuntansi dan Keuangan Lembaga") ? "Akuntansi dan Keuangan Lembaga (AKL)" : "Manajemen Perkantoran dan Layanan Bisnis (MPLB)";
 $label_gel_bukti = ($data['gelombang'] == 'Cadangan') ? 'Cadangan / Antrian' : 'Gelombang ' . $data['gelombang'];
 
+// LOGIKA PERHITUNGAN NILAI BARU (DITAMBAH, TIDAK DIBAGI 2)
 $asli_skl = (float)$data['nilai_skl'];
 $asli_tka = (float)$data['nilai_tka'];
 $nilai_berkas_asli = ($asli_skl + $asli_tka) / 2;
 $bobot_skl = $asli_skl * 0.70; 
 $bobot_tka = $asli_tka * 0.30; 
-$nilai_berkas_bobot = ($bobot_skl + $bobot_tka) / 2;
+$nilai_berkas_bobot = $bobot_skl + $bobot_tka; // <-- HANYA DITAMBAHKAN
 $nilai_test = (float)$data['nilai_test'];
 $nilai_akhir_total = ($nilai_berkas_bobot + $nilai_test) / 2;
 
@@ -264,7 +265,7 @@ function tgl_indo($tanggal) {
                         <tr>
                             <td colspan="2" class="garis-batas">
                                 <div style="margin-bottom: 4px; color: #475569;">Hasil Nilai Berkas Asli (Rata-rata) : <b><?php echo number_format($nilai_berkas_asli, 2); ?></b></div>
-                                <strong style="color: #0f172a;">Nilai Berkas Berbobot (Dibagi 2) : <span style="color:#4f46e5;"><?php echo number_format($nilai_berkas_bobot, 2); ?></span></strong>
+                                <strong style="color: #0f172a;">Nilai Berkas Berbobot (70% + 30%) : <span style="color:#4f46e5;"><?php echo number_format($nilai_berkas_bobot, 2); ?></span></strong>
                             </td>
                         </tr>
                     </table>
