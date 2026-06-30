@@ -245,6 +245,8 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                         <th>Dokumen Fisik</th>
                         <th>Evaluasi Nilai & Pembobotan</th>
                         <th>Aksi Keputusan Panitia</th>
+                        <!-- <th>Aksi Keputusan Panitia</th> -->
+
                     </tr>
                 </thead>
                 <tbody>
