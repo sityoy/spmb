@@ -102,7 +102,8 @@ if (isset($_POST['daftar'])) {
         }
     }
 
-    $cek_duplikat = "SELECT * FROM pendaftar WHERE no_ijazah = '$no_ijazah' OR nisn = '$nisn' OR no_kk = '$no_kk' OR nik = '$nik'";
+    // Cek duplikat hanya di gelombang yang sedang aktif. Jika dia pernah daftar di Gel 1, dia tetap bisa daftar saat Gel 2 dibuka.
+    $cek_duplikat = "SELECT * FROM pendaftar WHERE gelombang = '$gelombang_id' AND (no_ijazah = '$no_ijazah' OR nisn = '$nisn' OR no_kk = '$no_kk' OR nik = '$nik')";
     $hasil_cek    = mysqli_query($conn, $cek_duplikat);
 
     // ANTI-HACK LOKASI
@@ -187,11 +188,31 @@ if (isset($_POST['daftar'])) {
             $no_pendaftaran = "SPMB-SMKPB1-" . date('Y') . "-" . rand(1000, 9999);
             $waktu_daftar = date('Y-m-d H:i:s');
             
-            // Simpan pendaftar ke Gelombang Aktif
-            $query = "INSERT INTO pendaftar (no_pendaftaran, nama_lengkap, nik, tempat_lahir, tanggal_lahir, nisn, no_ijazah, asal_sekolah, riwayat_penyakit, alamat, kelurahan, kecamatan, no_whatsapp, pilihan_jurusan, nilai_skl, nilai_tka, nilai_test, file_ijazah, file_tka, file_kk, file_akte, no_kk, status_konfirmasi, file_ktp_bapak, file_ktp_ibu, file_sptjm, status_kjp, no_rek_kjp, file_tabungan_kjp, gelombang, tanggal_daftar) 
-                      VALUES ('$no_pendaftaran', '$nama', '$nik', '$tmpl_lahir', '$tgl_lahir', '$nisn', '$no_ijazah', '$asal', '$riwayat_penyakit', '$alamat', '$kelurahan', '$kecamatan', '$wa', '$jurusan', '$skl', '$tka', '0.00', '$nama_ijazah', '$nama_tka', '$nama_kk', '$nama_akte', '$no_kk', 'Menunggu', '$nama_ktp_bapak', '$nama_ktp_ibu', '$nama_sptjm', '$status_kjp', '$no_rek_kjp', '$nama_tabungan_kjp', '$gelombang_final', '$waktu_daftar')";
+            // Simpan pendaftar ke Gelombang Aktif (Tambahkan is_detail_filled = 1)
+            $query = "INSERT INTO pendaftar (no_pendaftaran, nama_lengkap, nik, tempat_lahir, tanggal_lahir, nisn, no_ijazah, asal_sekolah, riwayat_penyakit, alamat, kelurahan, kecamatan, no_whatsapp, pilihan_jurusan, nilai_skl, nilai_tka, nilai_test, file_ijazah, file_tka, file_kk, file_akte, no_kk, status_konfirmasi, file_ktp_bapak, file_ktp_ibu, file_sptjm, status_kjp, no_rek_kjp, file_tabungan_kjp, gelombang, tanggal_daftar, is_detail_filled) 
+                      VALUES ('$no_pendaftaran', '$nama', '$nik', '$tmpl_lahir', '$tgl_lahir', '$nisn', '$no_ijazah', '$asal', '$riwayat_penyakit', '$alamat', '$kelurahan', '$kecamatan', '$wa', '$jurusan', '$skl', '$tka', '0.00', '$nama_ijazah', '$nama_tka', '$nama_kk', '$nama_akte', '$no_kk', 'Menunggu', '$nama_ktp_bapak', '$nama_ktp_ibu', '$nama_sptjm', '$status_kjp', '$no_rek_kjp', '$nama_tabungan_kjp', '$gelombang_final', '$waktu_daftar', 1)";
 
             if (mysqli_query($conn, $query)) {
+                $id_pendaftar = mysqli_insert_id($conn); // Ambil ID yang baru saja dibuat
+                
+                // --- PROSES SIMPAN KE TABEL pendaftar_detail ---
+                $jenis_kelamin = htmlspecialchars(trim(mysqli_real_escape_string($conn, $_POST['jenis_kelamin'])));
+                $tanggal_kk = trim(mysqli_real_escape_string($conn, $_POST['tanggal_kk']));
+                $nama_ibu = htmlspecialchars(trim(mysqli_real_escape_string($conn, $_POST['nama_ibu'])));
+                $agama = htmlspecialchars(trim(mysqli_real_escape_string($conn, $_POST['agama'])));
+                $npsn_sekolah = trim(mysqli_real_escape_string($conn, $_POST['npsn_sekolah']));
+                
+                $kebutuhan_khusus = htmlspecialchars(trim(mysqli_real_escape_string($conn, $_POST['kebutuhan_khusus'])));
+                if (empty($kebutuhan_khusus)) { $kebutuhan_khusus = "Tidak Ada"; }
+
+                $query_detail = "INSERT INTO pendaftar_detail 
+                                (pendaftar_id, jenis_kelamin, tanggal_kk, nama_ibu, agama, npsn_sekolah, kebutuhan_khusus) 
+                                VALUES 
+                                ('$id_pendaftar', '$jenis_kelamin', '$tanggal_kk', '$nama_ibu', '$agama', '$npsn_sekolah', '$kebutuhan_khusus')";
+                
+                mysqli_query($conn, $query_detail);
+                // -----------------------------------------------
+
                 $_SESSION['izin_akses_bukti_' . $no_pendaftaran] = true;
                 header("Location: bukti.php?no_pendaftaran=" . urlencode(trim($no_pendaftaran)));
                 exit;
@@ -315,7 +336,7 @@ if (isset($_POST['daftar'])) {
             <div style="display:none;">
                 <input type="text" name="website_checker" value="">
             </div>
-            
+                        
             <div class="section-title">👤 Identitas Pribadi Calon Siswa</div>
             <div class="grid-form" style="margin-top:15px;">
                 <div class="form-group full-width">
@@ -398,6 +419,51 @@ if (isset($_POST['daftar'])) {
                 <div class="form-group full-width">
                     <label>Riwayat Penyakit Khusus (Jika Ada)</label>
                     <input type="text" name="riwayat_penyakit" placeholder="Tulis 'Tidak Ada' jika sehat walafiat">
+                </div>
+            </div>
+
+            <div class="section-title">📝 Detail Tambahan Calon Siswa</div>
+            <div class="grid-form" style="margin-top:15px;">
+                <div class="form-group">
+                    <label>Jenis Kelamin</label>
+                    <select name="jenis_kelamin" required>
+                        <option value="">-- Pilih Jenis Kelamin --</option>
+                        <option value="Laki-laki">Laki-laki</option>
+                        <option value="Perempuan">Perempuan</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Agama</label>
+                    <select name="agama" required>
+                        <option value="">-- Pilih Agama --</option>
+                        <option value="Islam">Islam</option>
+                        <option value="Kristen Protestan">Kristen Protestan</option>
+                        <option value="Katolik">Katolik</option>
+                        <option value="Hindu">Hindu</option>
+                        <option value="Buddha">Buddha</option>
+                        <option value="Konghucu">Konghucu</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Tanggal Terbit Kartu Keluarga (KK)</label>
+                    <input type="date" name="tanggal_kk" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Nama Ibu Kandung</label>
+                    <input type="text" name="nama_ibu" class="input-kapital" placeholder="CONTOH: SITI AMINAH" oninput="this.value = this.value.toUpperCase()" required>
+                </div>
+
+                <div class="form-group">
+                    <label>NPSN Asal Sekolah</label>
+                    <input type="tel" name="npsn_sekolah" maxlength="8" placeholder="8 Digit NPSN Sekolah Asal" pattern="[0-9]{8}" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Kebutuhan Khusus</label>
+                    <input type="text" name="kebutuhan_khusus" placeholder="Tulis 'Tidak Ada' jika tidak memiliki">
                 </div>
             </div>
 

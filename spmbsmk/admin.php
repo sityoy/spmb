@@ -182,6 +182,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
             <a href="?tab=<?php echo $tab_aktif; ?>&gel=Semua&search=<?php echo urlencode($search); ?>" class="btn-filter <?php echo ($gel_aktif == 'Semua') ? 'active' : ''; ?>">Semua Gelombang</a>
             <a href="?tab=<?php echo $tab_aktif; ?>&gel=1&search=<?php echo urlencode($search); ?>" class="btn-filter <?php echo ($gel_aktif == '1') ? 'active' : ''; ?>">Hanya Gelombang 1</a>
             <a href="?tab=<?php echo $tab_aktif; ?>&gel=2&search=<?php echo urlencode($search); ?>" class="btn-filter <?php echo ($gel_aktif == '2') ? 'active' : ''; ?>">Hanya Gelombang 2</a>
+            <a href="daftar_ulang/index.php" class="btn-action" style="background: #e11d48; color: white; padding: 8px 15px; font-weight: 800; border: 2px solid #be123c;">📁 PANEL DAFTAR ULANG</a>
         </div>
 
         <form action="" method="GET" class="search-box">
@@ -266,7 +267,13 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                                 $no_wa = $no_hp;
                             }
                             
-                            $pesan_wa = urlencode("Halo Bapak/Ibu Calon Wali Murid dari *" . $row['nama_lengkap'] . "* (NISN: " . $row['nisn'] . ").\n\nBerikut kami sampaikan Bukti Pendaftaran dan Pengumuman SPMB SMK Permata Bunda I.\n\nSilakan klik tautan ini untuk mengunduh bukti Anda:\n" . $domain_web . "/bukti.php?no_pendaftaran=" . $row['no_pendaftaran']);
+                            $alasan_wa = !empty($row['alasan_pembatalan']) ? "\n*Catatan:* " . trim($row['alasan_pembatalan']) : "";
+$status_wa = $row['status_konfirmasi'];
+if($status_wa == 'Tidak Jadi') { $status_wa = "TIDAK LOLOS / BATAL"; }
+
+$pesan_wa_mentah = "Halo Bapak/Ibu Calon Wali Murid dari *" . $row['nama_lengkap'] . "* (NISN: " . $row['nisn'] . ").\n\nBerdasarkan hasil seleksi Panitia SPMB SMK PERMATA BUNDA I JAKARTA, kami menginformasikan bahwa status pendaftaran putra/putri Anda saat ini adalah: *" . $status_wa . "*" . $alasan_wa . "\n\nJurusan: *" . $row['pilihan_jurusan'] . "*\nJalur: *Gelombang " . $row['gelombang'] . "*\n\nSilakan unduh atau cetak dokumen hasil seleksi pada tautan berikut:\n" . $domain_web . "/bukti.php?no_pendaftaran=" . $row['no_pendaftaran'] . "\n\nSilahkan lihat hasil live board pada tautan berikut\n*https://smkpb1.my.id/spmb/spmbsmk/live_board.php*\n\nJika Lulus/Kurang Berkas silahkan serahkan lalu ambil formulir daftar ulang ke sekolah\n\nTerima kasih.";
+
+$pesan_wa = urlencode($pesan_wa_mentah);
 
                             $asli_skl = (float)$row['nilai_skl'];
                             $asli_tka = (float)$row['nilai_tka'];
@@ -389,7 +396,13 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                                 $no_wa = $no_hp;
                             }
                             
-                            $pesan_wa = urlencode("Halo Bapak/Ibu Calon Wali Murid dari *" . $row['nama_lengkap'] . "* (NISN: " . $row['nisn'] . ").\n\nBerikut kami sampaikan Bukti Pendaftaran dan Pengumuman SPMB SMK Permata Bunda I.\n\nSilakan klik tautan ini untuk mengunduh bukti Anda:\n" . $domain_web . "/bukti.php?no_pendaftaran=" . $row['no_pendaftaran']);
+                            $alasan_wa = !empty($row['alasan_pembatalan']) ? "\n*Catatan:* " . trim($row['alasan_pembatalan']) : "";
+$status_wa = $row['status_konfirmasi'];
+if($status_wa == 'Tidak Jadi') { $status_wa = "TIDAK LOLOS / BATAL"; }
+
+$pesan_wa_mentah = "Halo Bapak/Ibu Calon Wali Murid dari *" . $row['nama_lengkap'] . "* (NISN: " . $row['nisn'] . ").\n\nBerdasarkan hasil seleksi Panitia SPMB SMK PERMATA BUNDA I JAKARTA, kami menginformasikan bahwa status pendaftaran putra/putri Anda saat ini adalah: *" . $status_wa . "*" . $alasan_wa . "\n\nJurusan: *" . $row['pilihan_jurusan'] . "*\nJalur: *Gelombang " . $row['gelombang'] . "*\n\nSilakan unduh atau cetak dokumen hasil seleksi pada tautan berikut:\n" . $domain_web . "/bukti.php?no_pendaftaran=" . $row['no_pendaftaran'] . "\n\nSilahkan lihat hasil live board pada tautan berikut\n*https://smkpb1.my.id/spmb/spmbsmk/live_board.php*\n\nJika Lulus/Kurang Berkas silahkan serahkan lalu ambil formulir daftar ulang ke sekolah\n\nTerima kasih.";
+
+$pesan_wa = urlencode($pesan_wa_mentah);
 
                             $asli_skl = (float)$row['nilai_skl'];
                             $asli_tka = (float)$row['nilai_tka'];

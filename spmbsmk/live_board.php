@@ -98,7 +98,8 @@ if (!$is_locked) {
         .status-badge { display: inline-block; padding: 5px 12px; font-size: 11px; font-weight: 700; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
         .badge-masuk { background: #d1fae5; color: #065f46; border: 1px solid #34d399; }
         .badge-luar { background: #fef2f2; color: #991b1b; border: 1px solid #f87171; }
-        .badge-batal { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; text-decoration: line-through; }
+        .badge-batal { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; text-decoration; }
+        /* .badge-batal { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; text-decoration: line-through; } */
         
         .row-luar td { background-color: #fafafa; opacity: 0.8; }
         .row-batal td { opacity: 0.6; }
@@ -206,7 +207,7 @@ if (!$is_locked) {
                         } elseif ($row['status_konfirmasi'] == 'Tidak Jadi') {
                             $cl_row = 'row-batal';
                             $alasan = !empty($row['alasan_pembatalan']) ? htmlspecialchars($row['alasan_pembatalan']) : 'Mengundurkan Diri';
-                            $badge = "<span class='status-badge badge-batal'>BATAL</span><div style='font-size:10.5px; color:#ef4444; margin-top:4px; font-weight:600;'>$alasan</div>";
+                            $badge = "<span class='status-badge badge-batal'>TIDAK LOLOS GELOMBANG 1</span><div style='font-size:10.5px; color:#ef4444; margin-top:4px; font-weight:600;'>$alasan</div>";
                         } else {
                             if ($r <= $quota) {
                                 $cl_row = '';
@@ -278,7 +279,7 @@ if (!$is_locked) {
                         } elseif ($row['status_konfirmasi'] == 'Tidak Jadi') {
                             $cl_row = 'row-batal';
                             $alasan = !empty($row['alasan_pembatalan']) ? htmlspecialchars($row['alasan_pembatalan']) : 'Mengundurkan Diri';
-                            $badge = "<span class='status-badge badge-batal'>BATAL</span><div style='font-size:10.5px; color:#ef4444; margin-top:4px; font-weight:600;'>$alasan</div>";
+                            $badge = "<span class='status-badge badge-batal'>TIDAK LOLOS GELOMBANG 1</span><div style='font-size:10.5px; color:#ef4444; margin-top:4px; font-weight:600;'>$alasan</div>";
                         } else {
                             if ($r <= $quota) {
                                 $cl_row = '';

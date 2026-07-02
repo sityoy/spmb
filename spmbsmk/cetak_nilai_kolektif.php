@@ -99,7 +99,6 @@ $result = mysqli_query($conn, $query);
                 <th rowspan="2" style="width: 8%;">No. Pend</th>
                 <th rowspan="2" style="width: 14%;">Nama Lengkap</th>
                 <th rowspan="2" style="width: 6%;">NISN</th>
-                <!-- <th rowspan="2" style="width: 8%;">NIK</th> -->
                 <th rowspan="2" style="width: 4%;">Umur</th>
                 <th rowspan="2" style="width: 12%;">Asal Sekolah</th>
                 <th rowspan="2" style="width: 4%;">Jurusan</th>
@@ -149,8 +148,9 @@ $result = mysqli_query($conn, $query);
                     if ($status_badge == 'LULUS') {
                         $status_text = "🔒 LULUS";
                     } elseif ($status_badge == 'Tidak Jadi') {
-                        $status_text = "❌ BATAL";
-                        $class_tr = "row-batal"; 
+                        $alasan = !empty($row['alasan_pembatalan']) ? htmlspecialchars($row['alasan_pembatalan'], ENT_QUOTES, 'UTF-8') : 'Mengundurkan Diri';
+                        $status_text = "❌ TIDAK LOLOS GELOMBANG 1 <br><span style='font-size:9.5px; font-weight:normal;'>($alasan)</span>";
+                        // $class_tr = "row-batal"; 
                     } else {
                         $status_text = "⏳ MENUNGGU";
                     }
@@ -161,7 +161,6 @@ $result = mysqli_query($conn, $query);
                 <td><?php echo $row['no_pendaftaran']; ?></td>
                 <td class="text-left"><?php echo htmlspecialchars($row['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?></td>
                 <td><?php echo htmlspecialchars($row['nisn'], ENT_QUOTES, 'UTF-8'); ?></td>
-                <!-- <td><?php echo htmlspecialchars($row['nik'], ENT_QUOTES, 'UTF-8'); ?></td> -->
                 <td><?php echo $umur_output; ?></td>
                 <td class="text-left"><?php echo htmlspecialchars($row['asal_sekolah'], ENT_QUOTES, 'UTF-8'); ?></td>
                 <td><?php echo ($row['pilihan_jurusan'] == 'Akuntansi dan Keuangan Lembaga') ? 'AKL' : 'MPLB'; ?></td>
@@ -175,7 +174,7 @@ $result = mysqli_query($conn, $query);
             <?php 
                 } 
             } else { 
-                echo "<tr><td colspan='15' style='padding: 20px; font-weight: bold;'>Tidak ada data siswa pendaftar pada filter ini.</td></tr>"; 
+                echo "<tr><td colspan='14' style='padding: 20px; font-weight: bold;'>Tidak ada data siswa pendaftar pada filter ini.</td></tr>"; 
             } 
             ?>
         </tbody>
