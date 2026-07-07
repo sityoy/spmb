@@ -31,11 +31,9 @@ function hitungPendaftarGelombang($jurusan, $id_gel, $conn) {
 
 $kuota_aktif = ($gelombang_id == 1) ? $kuota_g1 : $kuota_g2;
 
-// Hitung Pendaftar AKL
 $total_akl = hitungPendaftarGelombang('Akuntansi dan Keuangan Lembaga', $gelombang_id, $conn);
 $teks_akl = "Total Pendaftar: $total_akl Siswa (Memperebutkan $kuota_aktif Kuota)";
 
-// Hitung Pendaftar MPLB
 $total_mplb = hitungPendaftarGelombang('Manajemen Perkantoran dan Layanan Bisnis', $gelombang_id, $conn);
 $teks_mplb = "Total Pendaftar: $total_mplb Siswa (Memperebutkan $kuota_aktif Kuota)";
 
@@ -61,6 +59,7 @@ if (isset($_POST['daftar'])) {
     $skl        = (float) trim(mysqli_real_escape_string($conn, $_POST['nilai_skl']));
     $tka        = (float) trim(mysqli_real_escape_string($conn, $_POST['nilai_tka']));
     $no_kk      = trim(mysqli_real_escape_string($conn, $_POST['no_kk']));
+    $tanggal_kk = trim(mysqli_real_escape_string($conn, $_POST['tanggal_kk']));
 
     $riwayat_penyakit = htmlspecialchars(trim(mysqli_real_escape_string($conn, $_POST['riwayat_penyakit'])));
     if (empty($riwayat_penyakit)) { $riwayat_penyakit = "Tidak Ada"; }
@@ -74,13 +73,16 @@ if (isset($_POST['daftar'])) {
     if ($status_kjp == 'Ya') {
         $no_rek_kjp = trim(mysqli_real_escape_string($conn, $_POST['no_rek_kjp']));
         if (strlen($no_rek_kjp) < 5 || strlen($no_rek_kjp) > 15) {
-            $pesan = "<div class='alert alert-danger'><b>Pendaftaran Gagal!</b><br>Nomor rekening KJP tidak valid (minimal 5 angka, maksimal 15 angka).</div>";
+            $pesan = "<div class='alert-msg invalid-msg'><b>Pendaftaran Gagal!</b><br>Nomor rekening KJP tidak valid (minimal 5 angka, maksimal 15 angka).</div>";
         }
     }
 
     $tanggal_lahir_obj = new DateTime($tgl_lahir);
     $hari_ini_obj      = new DateTime(); 
     $hitung_umur       = $hari_ini_obj->diff($tanggal_lahir_obj)->y;
+
+    $batas_kk = strtotime('2025-06-15');
+    $input_kk = strtotime($tanggal_kk);
 
     $max_file_size = 3145728; 
     $daftar_file = ['file_ijazah', 'file_tka', 'file_kk', 'file_akte', 'file_ktp_bapak', 'file_ktp_ibu', 'file_sptjm'];
@@ -102,11 +104,9 @@ if (isset($_POST['daftar'])) {
         }
     }
 
-    // Cek duplikat hanya di gelombang yang sedang aktif. Jika dia pernah daftar di Gel 1, dia tetap bisa daftar saat Gel 2 dibuka.
     $cek_duplikat = "SELECT * FROM pendaftar WHERE gelombang = '$gelombang_id' AND (no_ijazah = '$no_ijazah' OR nisn = '$nisn' OR no_kk = '$no_kk' OR nik = '$nik')";
     $hasil_cek    = mysqli_query($conn, $cek_duplikat);
 
-    // ANTI-HACK LOKASI
     $jarak_tidak_valid = false;
     if (isset($_POST['lat']) && isset($_POST['long'])) {
         $lat = (float)$_POST['lat'];
@@ -127,22 +127,22 @@ if (isset($_POST['daftar'])) {
     }
 
     if ($file_terlalu_besar) {
-        $pesan = "<div class='alert alert-danger'><b>Pendaftaran Gagal!</b><br>Berkas melebihi batas maksimal 3MB.</div>";
+        $pesan = "<div class='alert-msg invalid-msg'><b>Pendaftaran Gagal!</b><br>Berkas melebihi batas maksimal 3MB.</div>";
     } elseif ($ekstensi_ilegal) {
-        $pesan = "<div class='alert alert-danger'><b>Format Berkas Ilegal!</b><br>Sistem hanya menerima file gambar atau dokumen (.pdf).</div>";
+        $pesan = "<div class='alert-msg invalid-msg'><b>Format Berkas Ilegal!</b><br>Sistem hanya menerima file gambar atau dokumen (.pdf).</div>";
     } elseif ($jarak_tidak_valid) {
-        $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Lokasi Anda tidak valid atau berada di luar area sekolah. Silakan lakukan Verifikasi Lokasi.</div>";
+        $pesan = "<div class='alert-msg invalid-msg'><b>Pendaftaran Ditolak!</b><br>Lokasi Anda tidak valid atau berada di luar area sekolah. Silakan lakukan Verifikasi Lokasi.</div>";
     } elseif (mysqli_num_rows($hasil_cek) > 0) {
-        $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Maaf, NIK, NISN, Nomor Seri Ijazah, atau Nomor KK Anda sudah pernah terdaftar di sistem kami. Anda tidak bisa mendaftar ganda.</div>";
+        $pesan = "<div class='alert-msg invalid-msg'><b>Pendaftaran Ditolak!</b><br>Maaf, NIK, NISN, Nomor Peserta SIDANIRA, atau Nomor KK Anda sudah pernah terdaftar di sistem kami. Anda tidak bisa mendaftar ganda.</div>";
     } elseif (substr($no_kk, 0, 2) !== '31' || strlen($no_kk) !== 16) {
-        $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Program Khusus ini hanya menerima warga pemilik KK resmi Provinsi DKI Jakarta.</div>";
+        $pesan = "<div class='alert-msg invalid-msg'><b>Pendaftaran Ditolak!</b><br>Program Khusus ini hanya menerima warga pemilik KK resmi Provinsi DKI Jakarta.</div>";
+    } elseif ($input_kk >= $batas_kk) {
+        $pesan = "<div class='alert-msg invalid-msg'><b>Pendaftaran Ditolak!</b><br>Tanggal terbit Kartu Keluarga (KK) wajib diterbitkan sebelum tanggal 15 Juni 2025.</div>";
     } elseif ($hitung_umur < 13 || $hitung_umur > 21) {
-        $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Kriteria usia tidak sesuai persyaratan sistem PPDB (13 - 21 Tahun).</div>";
+        $pesan = "<div class='alert-msg invalid-msg'><b>Pendaftaran Ditolak!</b><br>Kriteria usia tidak sesuai persyaratan sistem PPDB (13 - 21 Tahun).</div>";
     } elseif ($skl > 100 || $tka > 100 || $skl < 0 || $tka < 0) {
-        $pesan = "<div class='alert alert-danger'><b>Pendaftaran Ditolak!</b><br>Rentang penginputan nilai wajib berada di skala 0.00 - 100.00.</div>";
+        $pesan = "<div class='alert-msg invalid-msg'><b>Pendaftaran Ditolak!</b><br>Rentang penginputan nilai wajib berada di skala 0.00 - 100.00.</div>";
     } else {
-        
-        // SELURUH PENDAFTAR MASUK KE GELOMBANG AKTIF SAAT INI (TANPA LEMPARAN CADANGAN)
         $gelombang_final = $gelombang_id;
 
         $folder_tujuan = "uploads/";
@@ -188,16 +188,13 @@ if (isset($_POST['daftar'])) {
             $no_pendaftaran = "SPMB-SMKPB1-" . date('Y') . "-" . rand(1000, 9999);
             $waktu_daftar = date('Y-m-d H:i:s');
             
-            // Simpan pendaftar ke Gelombang Aktif (Tambahkan is_detail_filled = 1)
             $query = "INSERT INTO pendaftar (no_pendaftaran, nama_lengkap, nik, tempat_lahir, tanggal_lahir, nisn, no_ijazah, asal_sekolah, riwayat_penyakit, alamat, kelurahan, kecamatan, no_whatsapp, pilihan_jurusan, nilai_skl, nilai_tka, nilai_test, file_ijazah, file_tka, file_kk, file_akte, no_kk, status_konfirmasi, file_ktp_bapak, file_ktp_ibu, file_sptjm, status_kjp, no_rek_kjp, file_tabungan_kjp, gelombang, tanggal_daftar, is_detail_filled) 
                       VALUES ('$no_pendaftaran', '$nama', '$nik', '$tmpl_lahir', '$tgl_lahir', '$nisn', '$no_ijazah', '$asal', '$riwayat_penyakit', '$alamat', '$kelurahan', '$kecamatan', '$wa', '$jurusan', '$skl', '$tka', '0.00', '$nama_ijazah', '$nama_tka', '$nama_kk', '$nama_akte', '$no_kk', 'Menunggu', '$nama_ktp_bapak', '$nama_ktp_ibu', '$nama_sptjm', '$status_kjp', '$no_rek_kjp', '$nama_tabungan_kjp', '$gelombang_final', '$waktu_daftar', 1)";
 
             if (mysqli_query($conn, $query)) {
-                $id_pendaftar = mysqli_insert_id($conn); // Ambil ID yang baru saja dibuat
+                $id_pendaftar = mysqli_insert_id($conn);
                 
-                // --- PROSES SIMPAN KE TABEL pendaftar_detail ---
                 $jenis_kelamin = htmlspecialchars(trim(mysqli_real_escape_string($conn, $_POST['jenis_kelamin'])));
-                $tanggal_kk = trim(mysqli_real_escape_string($conn, $_POST['tanggal_kk']));
                 $nama_ibu = htmlspecialchars(trim(mysqli_real_escape_string($conn, $_POST['nama_ibu'])));
                 $agama = htmlspecialchars(trim(mysqli_real_escape_string($conn, $_POST['agama'])));
                 $npsn_sekolah = trim(mysqli_real_escape_string($conn, $_POST['npsn_sekolah']));
@@ -211,7 +208,6 @@ if (isset($_POST['daftar'])) {
                                 ('$id_pendaftar', '$jenis_kelamin', '$tanggal_kk', '$nama_ibu', '$agama', '$npsn_sekolah', '$kebutuhan_khusus')";
                 
                 mysqli_query($conn, $query_detail);
-                // -----------------------------------------------
 
                 $_SESSION['izin_akses_bukti_' . $no_pendaftaran] = true;
                 header("Location: bukti.php?no_pendaftaran=" . urlencode(trim($no_pendaftaran)));
@@ -233,387 +229,572 @@ if (isset($_POST['daftar'])) {
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f1f5f9; color: #1e293b; margin: 0; padding: 20px 10px; }
-        .container { max-width: 800px; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); padding: 35px; margin: 0 auto; box-sizing: border-box; }
-        
-        .header { text-align: center; margin-bottom: 30px; }
-        .header h2 { margin: 10px 0 5px 0; font-weight: 800; color: #0f172a; font-size: 24px; letter-spacing: -0.5px; }
-        .header h4 { margin: 0 0 10px 0; color: #475569; font-weight: 600; font-size: 16px; }
-        .tag-school, .tag-gelombang { background: #e0e7ff; color: #4f46e5; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; margin-bottom: 5px;}
-        .tag-gelombang { background: #fef3c7; color: #d97706; margin-left: 5px; }
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --success: #10b981;
+            --success-bg: #dcfce7;
+            --danger: #ef4444;
+            --danger-bg: #fee2e2;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+        }
 
-        .main-nav { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; flex-wrap: wrap; }
-        .nav-link { padding: 10px 22px; font-weight: 600; color: #64748b; text-decoration: none; border-radius: 10px; transition: all 0.3s ease; font-size: 14px; border: 1px solid #e2e8f0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-        .nav-link:hover { background: #f8fafc; color: #4f46e5; border-color: #cbd5e1; }
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: var(--bg-color); 
+            color: var(--text-main); 
+            margin: 0; 
+            padding: 40px 15px; 
+            line-height: 1.6;
+        }
+        
+        .container { max-width: 850px; margin: 0 auto; }
+        
+        .input-kapital { text-transform: uppercase; font-weight: 600; }
+        
+        /* Cards Design - Minimalist */
+        .card { 
+            background: var(--surface); 
+            border-radius: var(--radius-lg); 
+            margin-bottom: 30px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); 
+            border: 1px solid var(--border); 
+            overflow: hidden; 
+            transition: all 0.3s ease;
+        }
+        .card:focus-within {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            border-color: #cbd5e1;
+        }
 
-        .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
-        .full-width { grid-column: span 2; }
-        .input-group-badge { display: grid; grid-template-columns: 3fr 1fr; gap: 10px; }
-        .input-group-badge-date { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
+        .card-header { 
+            padding: 24px 30px 20px; 
+            border-bottom: 1px solid var(--border); 
+            display: flex; 
+            align-items: center; 
+            gap: 12px;
+            background: #ffffff;
+        }
         
-        .form-group label { display: block; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 14px 16px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-family: inherit; font-size: 14px; transition: all 0.2s ease; box-sizing: border-box; background: #fff; color: #1e293b; outline: none; }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); }
-        .form-group textarea { resize: vertical; min-height: 80px; }
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: #eef2ff;
+            color: var(--primary);
+            border-radius: 50%;
+            font-weight: 800;
+            font-size: 14px;
+        }
+
+        .card-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.3px;
+        }
+
+        .card-body { padding: 30px; }
         
-        .input-kapital { text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
-        .section-title { font-size: 15px; font-weight: 800; color: #0f172a; margin-top: 25px; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9; display: flex; align-items: center; gap: 6px; }
+        /* Form Grids */
+        .grid-form { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 24px; 
+        }
+        .full-width { grid-column: 1 / -1; }
         
-        .custom-upload-box { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 20px 15px; text-align: center; background: #f8fafc; cursor: pointer; transition: all 0.2s ease; min-height: 100px; box-sizing: border-box; }
-        .custom-upload-box:hover { background: #f0fdf4; border-color: #22c55e; }
+        /* Inputs & Labels */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label { 
+            font-size: 13px; 
+            font-weight: 700; 
+            color: #334155; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px; 
+        }
+        .form-group label span { color: var(--danger); margin-left: 2px; }
+        
+        .form-group input:not([type='file']), 
+        .form-group select, 
+        .form-group textarea { 
+            width: 100%; 
+            padding: 14px 16px; 
+            border: 1.5px solid var(--border); 
+            border-radius: var(--radius-md); 
+            font-family: inherit; 
+            font-size: 14px; 
+            background: #f8fafc; 
+            color: var(--text-main); 
+            outline: none; 
+            transition: all 0.2s ease;
+        }
+        
+        .form-group input:not([type='file']):focus, 
+        .form-group select:focus, 
+        .form-group textarea:focus { 
+            background: #ffffff; 
+            border-color: var(--primary); 
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); 
+        }
+        .form-group textarea { resize: vertical; min-height: 100px; }
+
+        /* Helper / Validation text under input */
+        .validation-msg {
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 4px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            width: max-content;
+            transition: all 0.2s ease;
+        }
+        .msg-valid { background: var(--success-bg); color: var(--success); border: 1px solid #bbf7d0; }
+        .msg-invalid { background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; }
+        .msg-info { background: #e0e7ff; color: var(--primary); border: 1px solid #c7d2fe; }
+        
+        /* Custom Upload Box */
+        .custom-upload-box { 
+            position: relative; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            border: 2px dashed #cbd5e1; 
+            border-radius: var(--radius-md); 
+            padding: 24px 16px; 
+            text-align: center; 
+            background: #f8fafc; 
+            cursor: pointer; 
+            transition: all 0.2s ease; 
+        }
+        .custom-upload-box:hover { background: #f0fdf4; border-color: var(--success); }
         .custom-upload-box input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 2; }
-        .upload-icon { font-size: 26px; display: block; margin-bottom: 6px; pointer-events: none; }
-        .upload-text { font-size: 13px; font-weight: 700; color: #475569; display: block; pointer-events: none; line-height: 1.4; }
-        .upload-hint { font-size: 11px; color: #94a3b8; display: block; margin-top: 5px; font-weight: 500; pointer-events: none; }
         
-        .custom-upload-box.file-loaded { background: #ecfdf5; border: 2px solid #10b981; }
-        .custom-upload-box.file-loaded .upload-icon { content: "✅"; }
-        .custom-upload-box.file-loaded .upload-text { color: #047857; }
-        .custom-upload-box.file-loaded .upload-hint { color: #065f46; font-weight: 700; word-break: break-all; padding: 0 4px; }
-
-        .btn { background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%); color: white; border: none; padding: 16px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.3s ease; width: 100%; font-size: 16px; margin-top: 15px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2); }
-        .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 15px rgba(79, 70, 229, 0.3); }
-        .btn:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; transform: none; }
-
-        .alert { padding: 15px 20px; border-radius: 10px; margin-bottom: 25px; font-size: 14px; line-height: 1.5; }
-        .alert-danger { background: #fef2f2; border-left: 4px solid #ef4444; color: #991b1b; }
-        .time-alert-box { background: #fffbeb; border: 1px solid #fde68a; padding: 30px; text-align: center; border-radius: 12px; color: #b45309; font-weight: 600; }
+        .upload-icon { font-size: 24px; margin-bottom: 8px; pointer-events: none; transition: transform 0.2s; }
+        .custom-upload-box:hover .upload-icon { transform: translateY(-3px); }
+        .upload-text { font-size: 13px; font-weight: 700; color: #475569; pointer-events: none; }
+        .upload-hint { font-size: 12px; color: #94a3b8; font-weight: 500; pointer-events: none; margin-top: 4px; }
         
-        .status-badge-neutral { background: #f1f5f9; border: 1.5px solid #cbd5e1; border-radius: 10px; text-align: center; font-weight: 700; padding: 14px 0; color: #64748b; font-size: 14px; box-sizing: border-box; display: block; width: 100%; }
-        .status-valid { background: #ecfdf5; border-color: #10b981; color: #047857; }
-        .status-invalid { background: #fef2f2; border-color: #ef4444; color: #b91c1c; }
+        .custom-upload-box.file-loaded { background: var(--success-bg); border: 2px solid var(--success); }
+        .custom-upload-box.file-loaded .upload-icon { content: "✅"; transform: scale(1.1); }
+        .custom-upload-box.file-loaded .upload-text { color: #065f46; }
 
-        .kjp-wrapper-box { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 20px; border-radius: 12px; margin-top: 15px; display: none; }
-        #info-lokasi { font-size: 12px; margin-top: 10px; font-weight: bold; text-align: center; padding: 8px; border-radius: 6px;}
+        /* Buttons & Alerts */
+        .btn-primary { 
+            background: var(--primary); 
+            color: white; 
+            border: none; 
+            padding: 18px 24px; 
+            border-radius: var(--radius-md); 
+            font-weight: 700; 
+            cursor: pointer; 
+            transition: all 0.2s ease; 
+            width: 100%; 
+            font-size: 15px; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2); 
+        }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3); }
+        .btn-primary:active:not(:disabled) { transform: translateY(0); }
+        .btn-primary:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; box-shadow: none; }
 
+        .btn-secondary {
+            background: #ffffff;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 14px 20px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-secondary:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
+        .alert-box { 
+            background: #eff6ff; 
+            border-left: 4px solid #3b82f6; 
+            padding: 16px 20px; 
+            border-radius: 8px; 
+            margin-bottom: 24px; 
+            color: #1e3a8a; 
+            font-size: 14px; 
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .alert-msg {
+            padding: 16px;
+            border-radius: var(--radius-md);
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+        .invalid-msg { background: var(--danger-bg); border: 1px solid #fecaca; color: #991b1b; }
+
+        /* Header styling */
+        .page-header { text-align: center; margin-bottom: 40px; }
+        .page-header img { max-height: 70px; margin: 0 8px; vertical-align: middle; }
+        .page-header h2 { margin: 20px 0 5px; font-weight: 800; font-size: 24px; color: var(--text-main); letter-spacing: -0.5px; }
+        .page-header p { margin: 0 0 16px; color: var(--text-muted); font-size: 15px; font-weight: 500; }
+        .gelombang-tag { background: #e0e7ff; color: var(--primary); padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; display: inline-block; }
+        
         @media (max-width: 640px) { 
-            body { padding: 10px; }
-            .container { padding: 20px 15px; border-radius: 12px; }
-            .header h2 { font-size: 20px; }
-            .header h4 { font-size: 14px; }
-            .tag-school, .tag-gelombang { display: block; margin: 5px auto; width: max-content; margin-left: auto; margin-right: auto;}
-            .main-nav { flex-direction: column; gap: 10px; padding-bottom: 15px; }
-            .nav-link { width: 100%; box-sizing: border-box; }
-            .grid-form { grid-template-columns: 1fr; gap: 15px; } 
-            .full-width { grid-column: span 1; }
-            .input-group-badge, .input-group-badge-date { grid-template-columns: 1fr; gap: 8px; }
-            .form-group input, .form-group select, .form-group textarea { font-size: 16px; padding: 12px 14px; }
-            .status-badge-neutral { padding: 12px 0; }
+            body { padding: 20px 10px; }
+            .grid-form { grid-template-columns: 1fr; gap: 20px; } 
+            .card-header, .card-body { padding: 20px; }
+            .page-header img { max-height: 50px; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">
-        <img src="logo/logopb.jpg" alt="Logo Yayasan Permata Bunda" style="max-height: 97px; width: auto; margin-bottom: 15px;">
-        <img src="logo/logopemda.png" alt="Logo Pemda DKI" style="max-height: 100px; width: auto; margin-bottom: 15px;">
-        <img src="logo/logosmkpb.png" alt="Logo SMK PB1" style="max-height: 110px; width: auto; margin-bottom: 15px;">
+    <?php
+        // Logika Peringatan Pembayaran (Paid)
+        $tanggal_sekarang = new DateTime('2026-07-08'); // Tanggal hari ini
+        $batas_bayar = new DateTime('2026-07-11');
+        $selisih = $tanggal_sekarang->diff($batas_bayar)->days;
+
+        if ($tanggal_sekarang <= $batas_bayar) {
+            echo "
+            <div style='background: #fee2e2; border: 1px solid #f87171; color: #991b1b; padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; font-weight: 700; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);'>
+                ⚠️ PERINGATAN PEMBAYARAN: Batas pembayaran terakhir adalah 11 Juli 2026. <br>
+                <span style='color: #dc2626;'>Sisa waktu Anda tinggal " . $selisih . " hari lagi. Mohon segera selesaikan administrasi!</span>
+            </div>";
+        }
+    ?>
+    <div class="page-header">
+        <img src="logo/logopb.jpg" alt="Logo Yayasan">
+        <img src="logo/logopemda.png" alt="Logo Pemda">
+        <img src="logo/logosmkpb.png" alt="Logo SMK">
         <h2>PORTAL SPMB ONLINE</h2>
-        <h2>SMKS PERMATA BUNDA I JAKARTA</h2>
-        <h4>Sekolah Swasta Gratis</h4>
-
-        <span class="tag-school">Tahun Ajaran 2026/2027</span>
-        <span class="tag-gelombang">🔥 <?php echo $gelombang_aktif; ?></span>
-    </div>
-
-    <div class="main-nav">
-        <a href="live_board.php" class="nav-link">📊 Live Board Sisa Kuota</a>
-        <a href="pengumuman.php" class="nav-link">🔍 Cek Hasil Kelulusan</a>
+        <p>SMKS PERMATA BUNDA I JAKARTA</p>
+        <span class="gelombang-tag">🔥 <?php echo $gelombang_aktif; ?></span>
     </div>
 
     <?php if ($pesan != "") echo $pesan; ?>
 
     <?php if (!$pendaftaran_buka): ?>
-        <div class="time-alert-box">
-            ⚠️ Mohon Maaf, Sistem Penerimaan Siswa Baru Saat Ini Sedang Ditutup Sementara Oleh Panitia Admin.<br>
-            <span style="font-size:13px; font-weight:500; color:#9a3412; display:block; margin-top:8px;">
-                Silakan hubungi pihak panitia sekolah untuk informasi jadwal pembukaan jalur berikutnya.
-            </span>
+        <div class="alert-msg invalid-msg" style="text-align: center; padding: 30px;">
+            <h3 style="margin-top:0;">⚠️ Pendaftaran Ditutup</h3>
+            Mohon Maaf, Sistem Penerimaan Siswa Baru Saat Ini Sedang Ditutup Sementara.<br>
+            Silakan hubungi pihak panitia sekolah untuk informasi lebih lanjut.
         </div>
     <?php else: ?>
         <form action="" method="POST" enctype="multipart/form-data">
             <div style="display:none;">
                 <input type="text" name="website_checker" value="">
             </div>
-                        
-            <div class="section-title">👤 Identitas Pribadi Calon Siswa</div>
-            <div class="grid-form" style="margin-top:15px;">
-                <div class="form-group full-width">
-                    <label>Nama Lengkap (Sesuai Ijazah)</label>
-                    <input type="text" name="nama_lengkap" class="input-kapital" placeholder="CONTOH: BUDI SETIAWAN" oninput="this.value = this.value.toUpperCase()" required>
-                </div>
 
-                <div class="form-group full-width">
-                    <label>Nomor Induk Kependudukan (NIK Siswa)</label>
-                    <div class="input-group-badge">
-                        <input type="tel" name="nik" id="nik" maxlength="16" placeholder="Wajib 16 Digit Angka NIK" pattern="[0-9]{16}" oninput="this.value = this.value.replace(/[^0-9]/g, ''); jalankanValidasiNik(this)" required>
-                        <span id="box_status_nik" class="status-badge-neutral">Belum Valid</span>
-                    </div>
+            <!-- SECTION 1: Identitas Siswa -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="step-indicator">1</div>
+                    <h3>Identitas Calon Siswa</h3>
                 </div>
-
-                <div class="form-group full-width">
-                    <label>Nomor Kartu Keluarga (KK DKI Jakarta)</label>
-                    <div class="input-group-badge">
-                        <input type="tel" id="no_kk" name="no_kk" maxlength="16" placeholder="Wajib 16 Digit & Diawali Angka 31" pattern="[0-9]{16}" oninput="this.value = this.value.replace(/[^0-9]/g, ''); jalankanValidasiSistemKomplit()" required>
-                        <span id="box_status_kk" class="status-badge-neutral">Belum Valid</span>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label>Tempat Lahir</label>
-                    <input type="text" name="tempat_lahir" placeholder="Jakarta" required style="text-transform: capitalize;">
-                </div>
-                
-                <div class="form-group">
-                    <label>Tanggal Lahir & Status Batas Usia</label>
-                    <div class="input-group-badge-date">
-                        <input type="date" id="tanggal_lahir" name="tanggal_lahir" onchange="jalankanValidasiSistemKomplit()" required>
-                        <span id="box_status_umur" class="status-badge-neutral">- Thn</span>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>NISN (10 Digit Wajib)</label>
-                    <input type="tel" 
-                        name="nisn" 
-                        id="nisn"
-                        maxlength="10" 
-                        placeholder="00xxxxxxxx" 
-                        pattern="[0-9]{10}" 
-                        oninput="this.value = this.value.replace(/[^0-9]/g, ''); jalankanValidasiNisn(this)" 
-                        required>
-                    <span id="box_status_nisn" class="status-badge-neutral" style="margin-top: 8px;">Belum Valid</span>
-                </div>
-
-                <div class="form-group">
-                    <label>Nomor Seri Ijazah / SK Sidanira</label>
-                    <input type="text" name="no_ijazah" placeholder="DN-xx/xxx/xxxxx" required>
-                </div>
-                
-                <div class="form-group full-width">
-                    <label>Alamat Lengkap Domisili Siswa</label>
-                    <textarea name="alamat" placeholder="Contoh : Jl. Jamblang Raya No.2LM ....." required></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label>Kelurahan / Desa</label>
-                    <input type="text" name="kelurahan" placeholder="Contoh : Kalianyar" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Kecamatan</label>
-                    <input type="text" name="kecamatan" placeholder="Contoh : Tambora" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Asal Sekolah (SMP / MTs)</label>
-                    <input type="text" name="asal_sekolah" placeholder="SMP Negeri 1 Jakarta" required>
-                </div>
-
-                <div class="form-group">
-                    <label>No. HP (WhatsApp) Aktif</label>
-                    <input type="tel" name="no_whatsapp" maxlength="15" placeholder="08xxxxxxxxxx" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
-                </div>
-
-                <div class="form-group full-width">
-                    <label>Riwayat Penyakit Khusus (Jika Ada)</label>
-                    <input type="text" name="riwayat_penyakit" placeholder="Tulis 'Tidak Ada' jika sehat walafiat">
-                </div>
-            </div>
-
-            <div class="section-title">📝 Detail Tambahan Calon Siswa</div>
-            <div class="grid-form" style="margin-top:15px;">
-                <div class="form-group">
-                    <label>Jenis Kelamin</label>
-                    <select name="jenis_kelamin" required>
-                        <option value="">-- Pilih Jenis Kelamin --</option>
-                        <option value="Laki-laki">Laki-laki</option>
-                        <option value="Perempuan">Perempuan</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Agama</label>
-                    <select name="agama" required>
-                        <option value="">-- Pilih Agama --</option>
-                        <option value="Islam">Islam</option>
-                        <option value="Kristen Protestan">Kristen Protestan</option>
-                        <option value="Katolik">Katolik</option>
-                        <option value="Hindu">Hindu</option>
-                        <option value="Buddha">Buddha</option>
-                        <option value="Konghucu">Konghucu</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Tanggal Terbit Kartu Keluarga (KK)</label>
-                    <input type="date" name="tanggal_kk" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Nama Ibu Kandung</label>
-                    <input type="text" name="nama_ibu" class="input-kapital" placeholder="CONTOH: SITI AMINAH" oninput="this.value = this.value.toUpperCase()" required>
-                </div>
-
-                <div class="form-group">
-                    <label>NPSN Asal Sekolah</label>
-                    <input type="tel" name="npsn_sekolah" maxlength="8" placeholder="8 Digit NPSN Sekolah Asal" pattern="[0-9]{8}" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Kebutuhan Khusus</label>
-                    <input type="text" name="kebutuhan_khusus" placeholder="Tulis 'Tidak Ada' jika tidak memiliki">
-                </div>
-            </div>
-
-            <div class="section-title">🎓 Kompetensi Keahlian (Jurusan) & Nilai</div>
-            <div class="grid-form" style="margin-top:15px;">
-                <div class="form-group full-width">
-                    <label>Pilihan Kompetensi Keahlian (Jurusan)</label>
-                    <select name="pilihan_jurusan" required>
-                        <option value="">-- Silahkan Pilih Jurusan --</option>
-                        <option value="Akuntansi dan Keuangan Lembaga">
-                            Akuntansi dan Keuangan Lembaga (AKL) - <?php echo $teks_akl; ?>
-                        </option>
-                        <option value="Manajemen Perkantoran dan Layanan Bisnis">
-                            Manajamen Perkantoran dan Layanan Bisnis (MPLB) - <?php echo $teks_mplb; ?>
-                        </option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Rata-rata Nilai SIDANIRA</label>
-                    <input type="number" name="nilai_skl" step="0.01" min="0" max="100" placeholder="0.00" 
-                        oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0; if(this.value.includes('.')){ let p=this.value.split('.'); if(p[1].length>2) this.value=p[0]+'.'+p[1].substring(0,2); }" required>
-                    <small style="color:#64748b; font-size:11px; margin-top:4px; display:block;">*Gunakan tanda <b>titik (.)</b> untuk desimal. Contoh: <b>79.99</b></small>
-                </div>
-
-                <div class="form-group">
-                    <label>Nilai Tes Akademik / TKA</label>
-                    <input type="number" name="nilai_tka" step="0.01" min="0" max="100" placeholder="0.00" 
-                        oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0; if(this.value.includes('.')){ let p=this.value.split('.'); if(p[1].length>2) this.value=p[0]+'.'+p[1].substring(0,2); }" required>
-                    <small style="color:#64748b; font-size:11px; margin-top:4px; display:block;">*Gunakan tanda <b>titik (.)</b> untuk desimal. Contoh: <b>80.99</b></small>
-                </div>
-            </div>
-
-            <div class="section-title">📁 Lampiran Dokumen (Maks 3MB)</div>
-            <div class="grid-form" style="margin-top:15px;">
-                <div class="form-group">
-                    <label>1. Scan Ijazah / SK Sidanira Asli <span style="color:red;">*</span></label>
-                    <div class="custom-upload-box" id="box_ijazah">
-                        <input type="file" name="file_ijazah" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_ijazah', 'box_ijazah')" required>
-                        <span class="upload-icon">📄</span>
-                        <span class="upload-text" id="txt_ijazah">Ketuk / Seret Berkas</span>
-                        <span class="upload-hint">Format: JPG, PNG, PDF</span>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>2. Scan Hasil Nilai TKA / SKHU <span style="color:red;">*</span></label>
-                    <div class="custom-upload-box" id="box_tka">
-                        <input type="file" name="file_tka" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_tka', 'box_tka')" required>
-                        <span class="upload-icon">📄</span>
-                        <span class="upload-text" id="txt_tka">Ketuk / Seret Berkas</span>
-                        <span class="upload-hint">Format: JPG, PNG, PDF</span>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>3. Scan Kartu Keluarga (KK) Asli - Terbaru (Wajib DKI) <span style="color:red;">*</span></label>
-                    <div class="custom-upload-box" id="box_kk">
-                        <input type="file" name="file_kk" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_kk', 'box_kk')" required>
-                        <span class="upload-icon">📄</span>
-                        <span class="upload-text" id="txt_kk">Ketuk / Seret Berkas</span>
-                        <span class="upload-hint">Format: JPG, PNG, PDF</span>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>4. Scan Akte Kelahiran Resmi <span style="color:red;">*</span></label>
-                    <div class="custom-upload-box" id="box_akte">
-                        <input type="file" name="file_akte" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_akte', 'box_akte')" required>
-                        <span class="upload-icon">📄</span>
-                        <span class="upload-text" id="txt_akte">Ketuk / Seret Berkas</span>
-                        <span class="upload-hint">Format: JPG, PNG, PDF</span>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>5. Scan KTP Bapak (Kandung) <span style="color:red;">*</span></label>
-                    <div class="custom-upload-box" id="box_ktp_bapak">
-                        <input type="file" name="file_ktp_bapak" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_ktp_bapak', 'box_ktp_bapak')" required>
-                        <span class="upload-icon">💳</span>
-                        <span class="upload-text" id="txt_ktp_bapak">Ketuk / Seret Berkas</span>
-                        <span class="upload-hint">Format: JPG, PNG, PDF</span>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>6. Scan KTP Ibu <span style="color:red;">*</span></label>
-                    <div class="custom-upload-box" id="box_ktp_ibu">
-                        <input type="file" name="file_ktp_ibu" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_ktp_ibu', 'box_ktp_ibu')" required>
-                        <span class="upload-icon">💳</span>
-                        <span class="upload-text" id="txt_ktp_ibu">Ketuk / Seret Berkas</span>
-                        <span class="upload-hint">Format: JPG, PNG, PDF</span>
-                    </div>
-                </div>
-
-                <div class="form-group full-width">
-                    <label>7. Scan Surat Pertanggungjawaban Mutlak (SPTJM) <span style="color:red;">*</span></label>
-                    <div class="custom-upload-box" id="box_sptjm">
-                        <input type="file" name="file_sptjm" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_sptjm', 'box_sptjm')" required>
-                        <span class="upload-icon">📜</span>
-                        <span class="upload-text" id="txt_sptjm">Ketuk / Seret Dokumen SPTJM Kesini</span>
-                        <span class="upload-hint">Format: JPG, PNG, PDF</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="section-title">💳 Kepemilikan Kartu Jakarta Pintar (KJP)</div>
-            <div style="margin-top: 15px;">
-                <div class="form-group">
-                    <label>Apakah Calon Siswa Memiliki KJP Aktif?</label>
-                    <select name="status_kjp" id="status_kjp_select" onchange="toggleKjpFormSistem(this.value)" required>
-                        <option value="Tidak">Tidak Memiliki KJP</option>
-                        <option value="Ya">Ya, Saya Pemilik KJP Aktif</option>
-                    </select>
-                </div>
-
-                <div id="wrapper_kjp_kondisional" class="kjp-wrapper-box">
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label>Nomor Rekening Buku Tabungan KJP</label>
-                        <input type="tel" 
-                            name="no_rek_kjp" 
-                            maxlength="15" 
-                            id="no_rek_kjp_field" 
-                            placeholder="Maksimal 15 angka" 
-                            oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-                    </div>
+                <div class="card-body">
                     
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>8. Scan Buku Tabungan KJP <span style="color:red;">*</span></label>
-                        <div class="custom-upload-box" id="box_tabungan_kjp">
-                            <input type="file" name="file_tabungan_kjp" id="file_tabungan_kjp_field" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_tabungan_kjp', 'box_tabungan_kjp')">
-                            <span class="upload-icon">💳</span>
-                            <span class="upload-text" id="txt_tabungan_kjp">Ketuk / Seret Tabungan KJP</span>
-                            <span class="upload-hint">Format: JPG, PNG, PDF</span>
+                    <div class="form-group full-width" style="margin-bottom: 24px;">
+                        <label>Nomor Peserta SIDANIRA <span>*</span></label>
+                        <input type="tel" name="no_ijazah" placeholder="Ketik hanya angka nomor peserta SIDANIRA" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                    </div>
+
+                    <div class="grid-form">
+                        <div class="form-group">
+                            <label>NIK (16 Digit) <span>*</span></label>
+                            <input type="tel" name="nik" maxlength="16" placeholder="Masukkan NIK sesuai KK" pattern="[0-9]{16}" oninput="this.value = this.value.replace(/[^0-9]/g, ''); jalankanValidasiNik(this)" required>
+                            <div id="box_status_nik" class="validation-msg" style="display:none;"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>NISN (10 Digit) <span>*</span></label>
+                            <input type="tel" name="nisn" maxlength="10" placeholder="Nomor Induk Siswa Nasional" pattern="[0-9]{10}" oninput="this.value = this.value.replace(/[^0-9]/g, ''); jalankanValidasiNisn(this)" required>
+                            <div id="box_status_nisn" class="validation-msg" style="display:none;"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>No. KK (16 Digit) <span>*</span></label>
+                            <input type="tel" id="no_kk" name="no_kk" maxlength="16" placeholder="Diawali angka 31 (DKI Jakarta)" pattern="[0-9]{16}" oninput="this.value = this.value.replace(/[^0-9]/g, ''); jalankanValidasiSistemKomplit()" required>
+                            <div id="box_status_kk" class="validation-msg" style="display:none;"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Tanggal Terbit KK <span>*</span></label>
+                            <input type="date" id="tanggal_kk" name="tanggal_kk" onchange="jalankanValidasiSistemKomplit()" required>
+                            <div id="box_status_tgl_kk" class="validation-msg" style="display:none;"></div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label>Nama Lengkap <span>*</span></label>
+                            <input type="text" name="nama_lengkap" class="input-kapital" placeholder="Sesuai Akta Kelahiran" oninput="this.value = this.value.toUpperCase()" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Tempat Lahir <span>*</span></label>
+                            <input type="text" name="tempat_lahir" placeholder="Kota tempat lahir" style="text-transform: capitalize;" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Tanggal Lahir & Usia <span>*</span></label>
+                            <input type="date" id="tanggal_lahir" name="tanggal_lahir" onchange="jalankanValidasiSistemKomplit()" required>
+                            <div id="box_status_umur" class="validation-msg" style="display:none;"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Jenis Kelamin <span>*</span></label>
+                            <select name="jenis_kelamin" required>
+                                <option value="">-- Pilih Jenis Kelamin --</option>
+                                <option value="Laki-laki">Laki-laki</option>
+                                <option value="Perempuan">Perempuan</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label>Pilihan Sekolah Gratis / Konsentrasi <span>*</span></label>
+                            <select name="pilihan_jurusan" required>
+                                <option value="">-- Pilih Program / Konsentrasi --</option>
+                                <option value="Akuntansi dan Keuangan Lembaga">Akuntansi dan Keuangan Lembaga (AKL) - <?php echo $teks_akl; ?></option>
+                                <option value="Manajemen Perkantoran dan Layanan Bisnis">Manajemen Perkantoran dan Layanan Bisnis (MPLB) - <?php echo $teks_mplb; ?></option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="alert-box" style="margin-top: 24px;">
+                        <span style="font-size: 24px;">🛡️</span>
+                        <div>
+                            <strong>Verifikasi Kependudukan Terpusat</strong><br>
+                            Sistem Dukcapil akan memverifikasi kesesuaian NIK, Nama, dan Tanggal Lahir Anda.
+                        </div>
+                    </div>
+
+                    <div class="grid-form">
+                        <div class="form-group">
+                            <label>Agama <span>*</span></label>
+                            <select name="agama" required>
+                                <option value="">-- Pilih Agama --</option>
+                                <option value="Islam">Islam</option>
+                                <option value="Kristen Protestan">Kristen Protestan</option>
+                                <option value="Katolik">Katolik</option>
+                                <option value="Hindu">Hindu</option>
+                                <option value="Buddha">Buddha</option>
+                                <option value="Konghucu">Konghucu</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Kebutuhan Khusus <span>*</span></label>
+                            <select name="kebutuhan_khusus" required>
+                                <option value="Tidak ada">Tidak ada</option>
+                                <option value="Tunanetra">Tunanetra</option>
+                                <option value="Tunarungu">Tunarungu</option>
+                                <option value="Tunadaksa">Tunadaksa</option>
+                            </select>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="section-title">📍 Keamanan Sistem Terpadu</div>
-            <div class="form-group full-width" style="margin-top: 15px; border: 1.5px solid #cbd5e1; padding: 20px; border-radius: 12px; background: #f8fafc;">
-                <label style="text-align: center; font-size: 14px;">Verifikasi Lokasi Sekolah</label>
-                <button type="button" class="btn" style="background:#64748b; box-shadow: none; margin-top:5px;" onclick="cekLokasi()">📍 Verifikasi Lokasi Saya</button>
-                <div id="info-lokasi" class="status-badge-neutral">Belum diverifikasi. Tekan tombol di atas.</div>
-                <input type="hidden" name="lat" id="lat">
-                <input type="hidden" name="long" id="long">
+            <!-- SECTION 2: Data Orang Tua & Alamat -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="step-indicator">2</div>
+                    <h3>Data Orang Tua & Alamat</h3>
+                </div>
+                <div class="card-body grid-form">
+                    <div class="form-group">
+                        <label>Nama Ibu Kandung <span>*</span></label>
+                        <input type="text" name="nama_ibu" class="input-kapital" placeholder="Nama ibu kandung sesuai KK" oninput="this.value = this.value.toUpperCase()" required>
+                    </div>
+                    <div class="form-group">
+                        <label>No. HP Orang Tua / Wali <span>*</span></label>
+                        <input type="tel" name="no_whatsapp" maxlength="15" placeholder="08xxxxxxxx" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label>Alamat Lengkap Domisili <span>*</span></label>
+                        <textarea name="alamat" placeholder="Tuliskan nama jalan, RT/RW, dan detail rumah" required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Kecamatan <span>*</span></label>
+                        <input type="text" name="kecamatan" placeholder="Contoh: Tambora" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Kelurahan <span>*</span></label>
+                        <input type="text" name="kelurahan" placeholder="Contoh: Angke" required>
+                    </div>
+                </div>
             </div>
 
-            <button type="submit" name="daftar" id="btn_submit_form" class="btn" disabled>
-                Kirim & Proses Formulir Pendaftaran
+            <!-- SECTION 3: Riwayat Akademik -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="step-indicator">3</div>
+                    <h3>Riwayat Akademik Asal</h3>
+                </div>
+                <div class="card-body">
+                    <div class="grid-form" style="margin-bottom: 24px;">
+                        <div class="form-group">
+                            <label>NPSN Sekolah Asal <span>*</span></label>
+                            <input type="tel" name="npsn_sekolah" maxlength="8" placeholder="8 Karakter NPSN" pattern="[0-9]{8}" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Nama Sekolah Asal <span>*</span></label>
+                            <input type="text" name="asal_sekolah" placeholder="Nama lengkap SMP/MTs asal" required>
+                        </div>
+                    </div>
+
+                    <div style="border-top: 1px solid var(--border); padding-top: 24px;" class="grid-form">
+                        <div class="form-group">
+                            <label style="color: var(--primary);">Nilai Rata-Rata SIDANIRA <span>*</span></label>
+                            <input type="number" name="nilai_skl" step="0.01" min="0" max="100" placeholder="0.00" oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0;" required style="background: #eef2ff; border-color: #c7d2fe; color: #3730a3; font-weight: bold;">
+                        </div>
+                        <div class="form-group">
+                            <label style="color: var(--primary);">Nilai Rata-Rata Tes TKA <span>*</span></label>
+                            <input type="number" name="nilai_tka" step="0.01" min="0" max="100" placeholder="0.00" oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0;" required style="background: #eef2ff; border-color: #c7d2fe; color: #3730a3; font-weight: bold;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 4: Upload Berkas & Keamanan -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="step-indicator">4</div>
+                    <h3>Upload Berkas Pendukung</h3>
+                </div>
+                <div class="card-body">
+                    <div class="grid-form">
+                        <div class="form-group">
+                            <label>1. Scan Ijazah / SK Sidanira Asli <span>*</span></label>
+                            <div class="custom-upload-box" id="box_ijazah">
+                                <input type="file" name="file_ijazah" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_ijazah', 'box_ijazah')" required>
+                                <span class="upload-icon">📄</span>
+                                <span class="upload-text" id="txt_ijazah">Pilih / Seret Berkas</span>
+                                <span class="upload-hint">JPG, PNG, PDF (Maks 3MB)</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>2. Scan Hasil Nilai TKA / SKHU <span>*</span></label>
+                            <div class="custom-upload-box" id="box_tka">
+                                <input type="file" name="file_tka" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_tka', 'box_tka')" required>
+                                <span class="upload-icon">📄</span>
+                                <span class="upload-text" id="txt_tka">Pilih / Seret Berkas</span>
+                                <span class="upload-hint">JPG, PNG, PDF (Maks 3MB)</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>3. Scan Kartu Keluarga (KK) <span>*</span></label>
+                            <div class="custom-upload-box" id="box_kk_up">
+                                <input type="file" name="file_kk" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_kk_up', 'box_kk_up')" required>
+                                <span class="upload-icon">📄</span>
+                                <span class="upload-text" id="txt_kk_up">Pilih / Seret Berkas</span>
+                                <span class="upload-hint">JPG, PNG, PDF (Maks 3MB)</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>4. Scan Akte Kelahiran <span>*</span></label>
+                            <div class="custom-upload-box" id="box_akte">
+                                <input type="file" name="file_akte" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_akte', 'box_akte')" required>
+                                <span class="upload-icon">📄</span>
+                                <span class="upload-text" id="txt_akte">Pilih / Seret Berkas</span>
+                                <span class="upload-hint">JPG, PNG, PDF (Maks 3MB)</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>5. Scan KTP Bapak <span>*</span></label>
+                            <div class="custom-upload-box" id="box_ktp_bapak">
+                                <input type="file" name="file_ktp_bapak" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_ktp_bapak', 'box_ktp_bapak')" required>
+                                <span class="upload-icon">💳</span>
+                                <span class="upload-text" id="txt_ktp_bapak">Pilih / Seret Berkas</span>
+                                <span class="upload-hint">JPG, PNG, PDF (Maks 3MB)</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>6. Scan KTP Ibu <span>*</span></label>
+                            <div class="custom-upload-box" id="box_ktp_ibu">
+                                <input type="file" name="file_ktp_ibu" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_ktp_ibu', 'box_ktp_ibu')" required>
+                                <span class="upload-icon">💳</span>
+                                <span class="upload-text" id="txt_ktp_ibu">Pilih / Seret Berkas</span>
+                                <span class="upload-hint">JPG, PNG, PDF (Maks 3MB)</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label>7. Surat Pertanggungjawaban Mutlak (SPTJM) <span>*</span></label>
+                            <div class="custom-upload-box" id="box_sptjm" style="background: #fefce8; border-color: #fde047;">
+                                <input type="file" name="file_sptjm" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_sptjm', 'box_sptjm')" required>
+                                <span class="upload-icon">📜</span>
+                                <span class="upload-text" id="txt_sptjm">Unggah Dokumen SPTJM Kesini</span>
+                                <span class="upload-hint">JPG, PNG, PDF (Maks 3MB)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="border-top: 1px solid var(--border); margin-top: 30px; padding-top: 30px;">
+                        <div class="form-group full-width" style="margin-bottom: 20px;">
+                            <label>Status Kepemilikan KJP</label>
+                            <select name="status_kjp" onchange="toggleKjpFormSistem(this.value)" required>
+                                <option value="Tidak">Tidak Memiliki KJP</option>
+                                <option value="Ya">Ya, Saya Pemilik KJP Aktif</option>
+                            </select>
+                        </div>
+
+                        <div id="wrapper_kjp_kondisional" style="display: none; background: #f8fafc; border: 1px dashed var(--border); padding: 24px; border-radius: var(--radius-md); margin-bottom: 30px;">
+                            <div class="grid-form">
+                                <div class="form-group">
+                                    <label>Nomor Rekening Tabungan KJP <span>*</span></label>
+                                    <input type="tel" name="no_rek_kjp" id="no_rek_kjp_field" maxlength="15" placeholder="Ketik nomor rekening" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                                </div>
+                                <div class="form-group">
+                                    <label>8. Scan Buku Tabungan KJP <span>*</span></label>
+                                    <div class="custom-upload-box" id="box_tabungan_kjp" style="min-height: 80px; padding: 15px;">
+                                        <input type="file" name="file_tabungan_kjp" id="file_tabungan_kjp_field" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_tabungan_kjp', 'box_tabungan_kjp')">
+                                        <span class="upload-text" id="txt_tabungan_kjp" style="font-size: 12px;">Pilih File</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; text-align: center;">
+                            <h4 style="margin: 0 0 16px; font-size: 14px; text-transform: uppercase; color: var(--text-main);">Verifikasi Lokasi Sekolah</h4>
+                            <button type="button" class="btn-secondary" onclick="cekLokasi()" style="margin-bottom: 16px;">
+                                📍 Verifikasi Lokasi Sekarang
+                            </button>
+                            <div id="info-lokasi" class="validation-msg msg-info" style="display: flex; margin: 0 auto;">Belum diverifikasi. Tekan tombol di atas.</div>
+                            <input type="hidden" name="lat" id="lat">
+                            <input type="hidden" name="long" id="long">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" name="daftar" id="btn_submit_form" class="btn-primary" disabled>
+                Proses Pendaftaran
             </button>
         </form>
     <?php endif; ?>
@@ -625,10 +806,11 @@ let isNisnValid = false;
 let isNikValid = false;
 let isUmurValid = false;
 let isKkValid = false;
+let isKkDateValid = false;
 
 function cekSemuaValidasi() {
     const btnSubmit = document.getElementById("btn_submit_form");
-    if (isLokasiValid && isNisnValid && isNikValid && isUmurValid && isKkValid) {
+    if (isLokasiValid && isNisnValid && isNikValid && isUmurValid && isKkValid && isKkDateValid) {
         btnSubmit.disabled = false; 
     } else {
         btnSubmit.disabled = true;  
@@ -636,7 +818,10 @@ function cekSemuaValidasi() {
 }
 
 function cekLokasi() {
-    document.getElementById('info-lokasi').innerHTML = "⏳ Sedang mencari lokasi...";
+    const infoLokasi = document.getElementById('info-lokasi');
+    infoLokasi.innerHTML = "⏳ Sedang mencari lokasi Anda...";
+    infoLokasi.className = "validation-msg msg-info";
+
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
             const latSekolah = -6.157462; 
@@ -653,22 +838,22 @@ function cekLokasi() {
             const jarak = R * c;
 
             if (jarak <= 590) {
-                document.getElementById('info-lokasi').innerHTML = "✅ Lokasi Valid (Jarak: " + jarak.toFixed(2) + "m)";
-                document.getElementById('info-lokasi').className = "status-valid";
+                infoLokasi.innerHTML = "✅ Valid (Jarak: " + jarak.toFixed(2) + "m)";
+                infoLokasi.className = "validation-msg msg-valid";
                 document.getElementById('lat').value = userLat;
                 document.getElementById('long').value = userLong;
                 isLokasiValid = true; 
-                cekSemuaValidasi();   
             } else {
                 alert("Pendaftaran Gagal!\nAnda berada di luar radius 590m dari sekolah. Jarak Anda: " + Math.round(jarak) + " meter.");
-                document.getElementById('info-lokasi').innerHTML = "❌ Lokasi Terlalu Jauh";
-                document.getElementById('info-lokasi').className = "status-invalid";
+                infoLokasi.innerHTML = "❌ Terlalu Jauh";
+                infoLokasi.className = "validation-msg msg-invalid";
                 isLokasiValid = false;
-                cekSemuaValidasi();
             }
+            cekSemuaValidasi();
         }, function(error) {
             alert("Mohon izinkan/aktifkan GPS Lokasi Anda di Browser.");
-            document.getElementById('info-lokasi').innerHTML = "❌ Akses GPS Ditolak";
+            infoLokasi.innerHTML = "❌ Akses GPS Ditolak";
+            infoLokasi.className = "validation-msg msg-invalid";
         });
     }
 }
@@ -680,11 +865,15 @@ function perbaruiPratinjauBerkasSistem(inputElement, textTargetId, boxTargetId) 
     if (inputElement.files && inputElement.files[0]) {
         const namaFile = inputElement.files[0].name;
         textTarget.innerText = "✓ Berkas Terpilih";
-        boxTarget.querySelector('.upload-hint').innerText = namaFile;
+        if(boxTarget.querySelector('.upload-hint')){
+            boxTarget.querySelector('.upload-hint').innerText = namaFile;
+        }
         boxTarget.classList.add('file-loaded');
     } else {
-        textTarget.innerText = "Ketuk / Seret Berkas";
-        boxTarget.querySelector('.upload-hint').innerText = "Format: JPG, PNG, PDF";
+        textTarget.innerText = "Pilih / Seret Berkas";
+        if(boxTarget.querySelector('.upload-hint')){
+            boxTarget.querySelector('.upload-hint').innerText = "JPG, PNG, PDF (Maks 3MB)";
+        }
         boxTarget.classList.remove('file-loaded');
     }
 }
@@ -704,21 +893,21 @@ function toggleKjpFormSistem(nilai) {
         fileField.required = false;
         noRekField.value = "";
         fileField.value = "";
-        document.getElementById('txt_tabungan_kjp').innerText = "Ketuk / Seret Tabungan KJP";
-        document.getElementById('box_tabungan_kjp').querySelector('.upload-hint').innerText = "Format: JPG, PNG, PDF";
+        document.getElementById('txt_tabungan_kjp').innerText = "Pilih File";
         document.getElementById('box_tabungan_kjp').classList.remove('file-loaded');
     }
 }
 
 function jalankanValidasiNik(input) {
     const badgeNik = document.getElementById("box_status_nik");
+    badgeNik.style.display = "flex";
     if (input.value.length === 16) {
-        badgeNik.innerText = "✅ NIK Valid";
-        badgeNik.className = "status-valid";
+        badgeNik.innerHTML = "✓ NIK Valid";
+        badgeNik.className = "validation-msg msg-valid";
         isNikValid = true; 
     } else {
-        badgeNik.innerText = "❌ Wajib 16 Angka";
-        badgeNik.className = "status-invalid";
+        badgeNik.innerHTML = "❌ Wajib 16 Digit";
+        badgeNik.className = "validation-msg msg-invalid";
         isNikValid = false;
     }
     cekSemuaValidasi(); 
@@ -726,13 +915,14 @@ function jalankanValidasiNik(input) {
 
 function jalankanValidasiNisn(input) {
     const badgeNisn = document.getElementById("box_status_nisn");
+    badgeNisn.style.display = "flex";
     if (input.value.length === 10) {
-        badgeNisn.innerText = "✅ NISN Valid";
-        badgeNisn.className = "status-valid";
+        badgeNisn.innerHTML = "✓ NISN Valid";
+        badgeNisn.className = "validation-msg msg-valid";
         isNisnValid = true; 
     } else {
-        badgeNisn.innerText = "❌ Wajib 10 Angka";
-        badgeNisn.className = "status-invalid";
+        badgeNisn.innerHTML = "❌ Wajib 10 Digit";
+        badgeNisn.className = "validation-msg msg-invalid";
         isNisnValid = false;
     }
     cekSemuaValidasi(); 
@@ -741,10 +931,16 @@ function jalankanValidasiNisn(input) {
 function jalankanValidasiSistemKomplit() {
     const tglLahirInput = document.getElementById("tanggal_lahir").value;
     const badgeUmur = document.getElementById("box_status_umur");
+    
     const kkInput = document.getElementById("no_kk").value;
     const badgeKk = document.getElementById("box_status_kk");
     
+    const tglKkInput = document.getElementById("tanggal_kk").value;
+    const badgeTglKk = document.getElementById("box_status_tgl_kk");
+    
+    // Cek Umur (Langsung Nampil Di Bawah Input Tanggal Lahir)
     if (tglLahirInput) {
+        badgeUmur.style.display = "flex";
         const lahir = new Date(tglLahirInput);
         const hariIni = new Date();
         let umur = hariIni.getFullYear() - lahir.getFullYear();
@@ -752,37 +948,57 @@ function jalankanValidasiSistemKomplit() {
         if (m < 0 || (m === 0 && hariIni.getDate() < lahir.getDate())) { umur--; }
         
         if (umur >= 13 && umur <= 21) {
-            badgeUmur.innerText = "✅ " + umur + " Thn";
-            badgeUmur.className = "status-valid";
+            badgeUmur.innerHTML = "✓ Usia " + umur + " Tahun (Lolos)";
+            badgeUmur.className = "validation-msg msg-valid";
             isUmurValid = true; 
         } else {
-            badgeUmur.innerText = "❌ " + umur + " Thn (Tidak Lolos)";
-            badgeUmur.className = "status-invalid";
+            badgeUmur.innerHTML = "❌ Usia " + umur + " Tahun (Ditolak)";
+            badgeUmur.className = "validation-msg msg-invalid";
             isUmurValid = false;
         }
     }
 
+    // Cek Nomor KK
     if (kkInput) {
+        badgeKk.style.display = "flex";
         if (kkInput.length === 16 && kkInput.startsWith("31")) {
-            badgeKk.innerText = "✅ KK DKI Valid";
-            badgeKk.className = "status-valid";
+            badgeKk.innerHTML = "✓ KK Resmi DKI Jakarta";
+            badgeKk.className = "validation-msg msg-valid";
             isKkValid = true; 
         } else {
-            badgeKk.innerText = "❌ Bukan KK DKI / < 16 Digit";
-            badgeKk.className = "status-invalid";
+            badgeKk.innerHTML = "❌ Bukan KK DKI / <16 Digit";
+            badgeKk.className = "validation-msg msg-invalid";
             isKkValid = false;
+        }
+    }
+
+    // Cek Tanggal Terbit KK (< 15 Juni 2025)
+    if (tglKkInput) {
+        badgeTglKk.style.display = "flex";
+        const dateKk = new Date(tglKkInput);
+        const limitDate = new Date('2025-06-15');
+
+        if (dateKk < limitDate) {
+            badgeTglKk.innerHTML = "✓ Sesuai Syarat";
+            badgeTglKk.className = "validation-msg msg-valid";
+            isKkDateValid = true;
+        } else {
+            badgeTglKk.innerHTML = "❌ Wajib di bawah 15 Jun 2025";
+            badgeTglKk.className = "validation-msg msg-invalid";
+            isKkDateValid = false;
         }
     }
 
     cekSemuaValidasi(); 
 }
 
+// Auto-Load Session Data (Biar kalau refresh, data gak hilang)
 document.addEventListener("DOMContentLoaded", function() {
     const formElements = document.querySelectorAll("input:not([type='file']), select, textarea");
     formElements.forEach(el => {
         if (el.name && sessionStorage.getItem(el.name)) {
             el.value = sessionStorage.getItem(el.name);
-            if(el.name === "tanggal_lahir" || el.name === "no_kk") jalankanValidasiSistemKomplit();
+            if(el.name === "tanggal_lahir" || el.name === "no_kk" || el.name === "tanggal_kk") jalankanValidasiSistemKomplit();
             if(el.name === "nisn") jalankanValidasiNisn(el);
             if(el.name === "nik") jalankanValidasiNik(el);
             if(el.name === "status_kjp") toggleKjpFormSistem(el.value);
