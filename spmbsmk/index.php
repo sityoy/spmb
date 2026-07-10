@@ -469,20 +469,7 @@ if (isset($_POST['daftar'])) {
 <body>
 
 <div class="container">
-    <?php
-        // Logika Peringatan Pembayaran (Paid)
-        $tanggal_sekarang = new DateTime('2026-07-08'); // Tanggal hari ini
-        $batas_bayar = new DateTime('2026-07-11');
-        $selisih = $tanggal_sekarang->diff($batas_bayar)->days;
-
-        if ($tanggal_sekarang <= $batas_bayar) {
-            echo "
-            <div style='background: #fee2e2; border: 1px solid #f87171; color: #991b1b; padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; font-weight: 700; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);'>
-                ⚠️ PERINGATAN PEMBAYARAN: Batas pembayaran terakhir adalah 11 Juli 2026. <br>
-                <span style='color: #dc2626;'>Sisa waktu Anda tinggal " . $selisih . " hari lagi. Mohon segera selesaikan administrasi!</span>
-            </div>";
-        }
-    ?>
+    <?php include "tenggat/tenggat.php" ?>
     <div class="page-header">
         <img src="logo/logopb.jpg" alt="Logo Yayasan">
         <img src="logo/logopemda.png" alt="Logo Pemda">
@@ -685,7 +672,7 @@ if (isset($_POST['daftar'])) {
                 <div class="card-body">
                     <div class="grid-form">
                         <div class="form-group">
-                            <label>1. Scan Ijazah / SK Sidanira Asli <span>*</span></label>
+                            <label>1. Scan SKL / SK Sidanira Asli <span>*</span></label>
                             <div class="custom-upload-box" id="box_ijazah">
                                 <input type="file" name="file_ijazah" accept=".jpg,.jpeg,.png,.pdf" onchange="perbaruiPratinjauBerkasSistem(this, 'txt_ijazah', 'box_ijazah')" required>
                                 <span class="upload-icon">📄</span>

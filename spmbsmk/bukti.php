@@ -10,8 +10,11 @@ if (!isset($_GET['no_pendaftaran'])) {
 $no_daftar = trim($_GET['no_pendaftaran']); 
 $no_daftar_clean = mysqli_real_escape_string($conn, $no_daftar);
 
-// Ambil data dari database dulu
-$query = "SELECT * FROM pendaftar WHERE TRIM(no_pendaftaran) = TRIM('$no_daftar_clean')";
+// Ambil data dari database (JOIN dengan pendaftar_detail untuk data terlengkap)
+$query = "SELECT p.*, pd.jenis_kelamin, pd.tanggal_kk, pd.nama_ibu, pd.agama, pd.npsn_sekolah, pd.kebutuhan_khusus 
+          FROM pendaftar p 
+          LEFT JOIN pendaftar_detail pd ON p.id = pd.pendaftar_id 
+          WHERE TRIM(p.no_pendaftaran) = TRIM('$no_daftar_clean')";
 $result = mysqli_query($conn, $query);
 $data = mysqli_fetch_assoc($result);
 
@@ -85,22 +88,30 @@ if ($status_db == 'LULUS') {
 $jrs = ($data['pilihan_jurusan'] == "Akuntansi dan Keuangan Lembaga") ? "Akuntansi dan Keuangan Lembaga (AKL)" : "Manajemen Perkantoran dan Layanan Bisnis (MPLB)";
 $label_gel_bukti = ($data['gelombang'] == 'Cadangan') ? 'Cadangan / Antrian' : 'Gelombang ' . $data['gelombang'];
 
-// LOGIKA PERHITUNGAN NILAI BARU (DITAMBAH, TIDAK DIBAGI 2)
+// LOGIKA PERHITUNGAN NILAI BARU
 $asli_skl = (float)$data['nilai_skl'];
 $asli_tka = (float)$data['nilai_tka'];
 $nilai_berkas_asli = ($asli_skl + $asli_tka) / 2;
 $bobot_skl = $asli_skl * 0.70; 
 $bobot_tka = $asli_tka * 0.30; 
-$nilai_berkas_bobot = $bobot_skl + $bobot_tka; // <-- HANYA DITAMBAHKAN
+$nilai_berkas_bobot = $bobot_skl + $bobot_tka; 
 $nilai_test = (float)$data['nilai_test'];
-$nilai_akhir_total = ($nilai_berkas_bobot + $nilai_test) / 2;
+
+// Handling variabel Null dari LEFT JOIN (jika data lama belum ada detail)
+$jk = !empty($data['jenis_kelamin']) ? $data['jenis_kelamin'] : "-";
+$agama = !empty($data['agama']) ? $data['agama'] : "-";
+$nama_ibu = !empty($data['nama_ibu']) ? $data['nama_ibu'] : "-";
+$tgl_kk = !empty($data['tanggal_kk']) ? $data['tanggal_kk'] : "-";
+$npsn = !empty($data['npsn_sekolah']) ? $data['npsn_sekolah'] : "-";
+$kb_khusus = !empty($data['kebutuhan_khusus']) ? $data['kebutuhan_khusus'] : "Tidak Ada";
 
 function tgl_indo($tanggal) {
-    if (empty($tanggal) || $tanggal == '0000-00-00 00:00:00' || $tanggal == '0000-00-00') { return "-"; }
+    if (empty($tanggal) || $tanggal == '0000-00-00 00:00:00' || $tanggal == '0000-00-00' || $tanggal == '-') { return "-"; }
     $pecah_waktu = explode(' ', $tanggal);
     $hanya_tanggal = $pecah_waktu[0];
     $bulan_indo = [1 => 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     $split = explode('-', $hanya_tanggal);
+    if(count($split) < 3) return $tanggal;
     $tgl   = $split[2];
     $bulan = (int)$split[1];
     $tahun = $split[0];
@@ -123,106 +134,97 @@ function tgl_indo($tanggal) {
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
         
         body { font-family: 'Plus Jakarta Sans', Arial, sans-serif; color: #1f2937; background: #f3f4f6; margin: 0; padding: 20px 10px; }
-        .card-bukti { max-width: 700px; background: #fff; margin: 0 auto; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-top: 8px solid #4f46e5; box-sizing: border-box; }
-        .kop { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 20px; margin-bottom: 25px; }
-        .kop img { max-width: 100%; height: auto; }
-        .kop h2 { margin: 0; color: #4f46e5; font-size: 22px; font-weight: 800; }
-        .kop p { margin: 6px 0 0 0; font-size: 14px; color: #4b5563; }
-        .no-reg { text-align: center; font-size: 24px; font-weight: 800; color: #0f172a; margin: 15px 0 20px 0; letter-spacing: 1.5px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0; word-break: break-all; }
+        .card-bukti { max-width: 1100px; background: #fff; margin: 0 auto; padding: 30px 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-top: 8px solid #4f46e5; box-sizing: border-box; }
         
-        /* Kotak Status */
-        .box-status { text-align: center; padding: 15px; border-radius: 8px; margin-bottom: 25px; border-width: 2px; border-style: solid; }
-        .box-status h3 { margin: 0 0 5px 0; font-size: 22px; font-weight: 800; letter-spacing: 1px; }
-        .box-status span { font-size: 14px; display: block; }
+        /* Kop Header (Compact) */
+        .kop-wrapper { display: flex; align-items: center; justify-content: center; gap: 20px; border-bottom: 2px dashed #cbd5e1; padding-bottom: 15px; margin-bottom: 20px; }
+        .kop-logos img { max-height: 80px; margin: 0 5px; }
+        .kop-text { text-align: left; }
+        .kop-text h2 { margin: 0; color: #4f46e5; font-size: 24px; font-weight: 800; }
+        .kop-text p { margin: 4px 0 0 0; font-size: 14px; color: #4b5563; }
+        
+        .no-reg { text-align: center; font-size: 22px; font-weight: 800; color: #0f172a; margin: 10px 0 15px 0; letter-spacing: 1.5px; background:#f8fafc; padding:8px; border-radius:8px; border:1px solid #e2e8f0; word-break: break-all; }
+        
+        /* Status */
+        .box-status { text-align: center; padding: 12px; border-radius: 8px; margin-bottom: 20px; border-width: 2px; border-style: solid; }
+        .box-status h3 { margin: 0 0 5px 0; font-size: 20px; font-weight: 800; letter-spacing: 1px; }
+        .box-status span { font-size: 13px; display: block; }
 
-        .main-table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: auto; }
-        .main-table td { padding: 10px; border-bottom: 1px solid #f1f5f9; font-size: 14px; vertical-align: top; word-wrap: break-word; }
-        .main-table td:first-child { font-weight: 600; color: #475569; width: 35%; }
+        /* Grid System (Landscape Format) */
+        .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .section-title { font-size: 14px; font-weight: 800; color: #4f46e5; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; margin-top: 0; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        .box-nilai { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; line-height: 1.6; }
-        .tabel-rincian { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .tabel-rincian td { padding: 5px 0; border: none; }
+        .main-table { width: 100%; border-collapse: collapse; table-layout: auto; }
+        .main-table td { padding: 8px 5px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: top; word-wrap: break-word; }
+        .main-table td:first-child { font-weight: 600; color: #475569; width: 40%; }
+        
+        /* Evaluasi Nilai */
+        .box-nilai { background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 12.5px; line-height: 1.6; margin-top: 5px;}
+        .tabel-rincian { width: 100%; border-collapse: collapse; }
+        .tabel-rincian td { padding: 4px 0; border: none; }
         .nilai-asli { font-weight: 700; color: #1e293b; }
         .nilai-bobot { font-weight: 800; color: #0284c7; }
-        .garis-batas { border-top: 1px dashed #cbd5e1 !important; margin-top: 8px; padding-top: 8px !important; }
+        .garis-batas { border-top: 1px dashed #cbd5e1 !important; margin-top: 6px; padding-top: 6px !important; }
+        .box-hasil-akhir { background: #eef2ff; border: 1.5px solid #c7d2fe; padding: 10px; border-radius: 8px; margin-top: 5px; text-align: center; }
+        .text-hasil-akhir { color: #4f46e5; font-size: 18px; font-weight: 800; display: block; margin-top: 2px; }
         
-        .badge-tunggu { background: #fef3c7; color: #b45309; padding: 6px 10px; border-radius: 6px; font-size: 12.5px; font-weight: 600; font-style: italic; display: inline-block; }
-        .badge-nilai { background: #ecfdf5; color: #059669; padding: 6px 12px; border-radius: 6px; font-size: 14px; font-weight: 800; border: 1px solid #10b981; display: inline-block;}
+        .check-icon { color: #059669; font-weight: bold; background: #d1fae5; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block;}
         
-        .box-hasil-akhir { background: #eef2ff; border: 1.5px solid #c7d2fe; padding: 15px; border-radius: 8px; margin-top: 5px; }
-        .text-hasil-akhir { color: #4f46e5; font-size: 18px; font-weight: 800; display: block; margin-top: 4px; }
-        
-        .btn-area { text-align: center; margin-top: 35px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
-        .btn-print, .btn-next { padding: 12px 24px; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 14px; transition: 0.2s; box-sizing: border-box;}
+        .btn-area { text-align: center; margin-top: 30px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .btn-print, .btn-next { padding: 12px 24px; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 14px; transition: 0.2s; }
         .btn-print { background: #4f46e5; }
-        .btn-print:hover { background: #4338ca; }
         .btn-next { background: #10b981; }
-        .btn-next:hover { background: #059669; }
-        .check-icon { color: #059669; font-weight: bold; background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-size: 12px; display: inline-block; margin-top: 4px;}
-        
-        /* RESPONSIVE & PRINT SETTINGS */
-        @media (max-width: 600px) {
-            body { padding: 10px 5px; }
-            .card-bukti { padding: 20px 15px; border-top-width: 6px; }
-            .kop h2 { font-size: 18px; }
-            .kop p { font-size: 12px; }
-            .no-reg { font-size: 18px; padding: 8px; }
-            .box-status h3 { font-size: 18px; }
-            .box-status span { font-size: 12px; }
-            .main-table td { display: block; width: 100% !important; padding: 6px 0; border: none; }
-            .main-table tr { border-bottom: 1px solid #e2e8f0; display: block; padding: 8px 0; }
-            .main-table tr:last-child { border-bottom: none; }
-            .main-table td:first-child { font-size: 12px; color: #64748b; padding-bottom: 2px; } 
-            .main-table td:last-child { font-size: 14px; font-weight: 500; color: #1e293b; padding-top: 0; }
-            .tabel-rincian td { display: block; width: 100%; text-align: left; }
-            .tabel-rincian tr { display: block; margin-bottom: 8px; border-bottom: 1px dotted #cbd5e1; padding-bottom: 8px;}
-            .tabel-rincian tr:last-child { border-bottom: none; }
-            .btn-area { flex-direction: column; gap: 10px; }
-            .btn-print, .btn-next { width: 100%; }
+
+        @media (max-width: 768px) {
+            .grid-container { grid-template-columns: 1fr; gap: 20px; }
+            .kop-wrapper { flex-direction: column; text-align: center; }
+            .kop-text { text-align: center; }
         }
 
-        @page { size: A4; margin: 0.5cm; }
+        /* 🖨️ PRINT SETTINGS: OTOMATIS LANDSCAPE */
+        @page { size: A4 landscape; margin: 1cm; }
         @media print {
             body { background: #fff; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .card-bukti { box-shadow: none; margin: 0 auto; padding: 0; border: none; border-top: 8px solid #4f46e5 !important; max-width: 100%; width: 100%; }
+            .card-bukti { box-shadow: none; margin: 0; padding: 0; border: none; border-top: 8px solid #4f46e5 !important; max-width: 100%; width: 100%; }
             .btn-area { display: none; } 
-            .kop { padding-bottom: 8px !important; margin-bottom: 10px !important; }
-            .kop img { max-height: 55px !important; margin-bottom: 5px !important; }
-            .kop h2 { font-size: 16px !important; }
-            .kop p { font-size: 11px !important; margin-top: 2px !important; }
-            .no-reg { font-size: 16px !important; margin: 8px 0 10px 0 !important; }
-            .box-status { padding: 10px !important; margin-bottom: 15px !important; }
-            .box-status h3 { font-size: 18px !important; }
-            .main-table { width: 100%; }
-            .main-table tr { display: table-row; } 
-            .main-table td { display: table-cell; width: auto !important; border-bottom: 1px solid #f1f5f9; padding: 4px 5px !important; font-size: 11px !important; line-height: 1.3 !important; }
-            .main-table td:first-child { width: 32% !important; font-size: 11px !important; color: #475569; }
-            .box-nilai { padding: 6px 10px !important; border: 1px solid #cbd5e1 !important; }
-            .tabel-rincian { font-size: 11px !important; }
-            .tabel-rincian td { display: table-cell; padding: 2px 0 !important; }
-            .tabel-rincian tr { display: table-row; margin-bottom: 0; padding-bottom: 0;}
-            .box-hasil-akhir { padding: 6px 10px !important; border: 1px solid #c7d2fe !important; margin-top: 2px !important;}
-            .text-hasil-akhir { font-size: 14px !important; margin-top: 2px !important; }
-            .badge-tunggu { font-size: 10px !important; padding: 4px 6px !important;}
-            .badge-nilai { font-size: 11px !important; padding: 4px 6px !important;}
-            .check-icon { font-size: 10px !important; padding: 1px 4px !important; margin-top: 1px !important; }
-            .garis-batas { margin-top: 4px !important; padding-top: 4px !important; }
+            
+            .kop-wrapper { padding-bottom: 10px !important; margin-bottom: 15px !important; }
+            .kop-logos img { max-height: 60px !important; }
+            .kop-text h2 { font-size: 20px !important; }
+            .kop-text p { font-size: 12px !important; }
+            .no-reg { font-size: 18px !important; margin: 5px 0 10px 0 !important; padding: 6px !important;}
+            
+            .box-status { padding: 8px !important; margin-bottom: 15px !important; }
+            .box-status h3 { font-size: 16px !important; }
+            .box-status span { font-size: 12px !important; }
+            
+            .grid-container { gap: 20px !important; }
+            .main-table td { padding: 6px 4px !important; font-size: 12px !important; line-height: 1.3 !important; }
+            .section-title { font-size: 13px !important; margin-bottom: 5px !important; }
+            .box-nilai { padding: 8px !important; }
+            .tabel-rincian td { padding: 2px 0 !important; font-size: 11.5px !important; }
+            .box-hasil-akhir { padding: 8px !important; }
+            .text-hasil-akhir { font-size: 16px !important; }
         }
     </style>
 </head>
 <body>
 
 <div class="card-bukti">
-    <div class="kop">
-        <img src="logo/logopb.jpg" alt="Logo Yayasan Permata Bunda" style="max-height: 97px; width: auto; margin-bottom: 15px;">
-        <img src="logo/logopemda.png" alt="Logo Pemda DKI" style="max-height: 100px; width: auto; margin-bottom: 15px;">
-        <img src="logo/logosmkpb.png" alt="Logo SMK PB1" style="max-height: 110px; width: auto; margin-bottom: 15px;">
-        <h2>TANDA BUKTI PENDAFTARAN SPMB</h2>
-        <p>SMKS PERMATA BUNDA I JAKARTA</p>
-        <p style="font-weight: 800; color: #059669;">Tahun Ajaran 2026/2027 (Jalur: <?php echo htmlspecialchars($label_gel_bukti, ENT_QUOTES, 'UTF-8'); ?>)</p>
+    <div class="kop-wrapper">
+        <div class="kop-logos">
+            <img src="logo/logopb.jpg" alt="Logo Yayasan">
+            <img src="logo/logopemda.png" alt="Logo Pemda">
+            <img src="logo/logosmkpb.png" alt="Logo SMK">
+        </div>
+        <div class="kop-text">
+            <h2>TANDA BUKTI PENDAFTARAN SPMB</h2>
+            <p>SMKS PERMATA BUNDA I JAKARTA</p>
+            <p style="font-weight: 800; color: #059669;">Tahun Ajaran 2026/2027 (Jalur: <?php echo htmlspecialchars($label_gel_bukti, ENT_QUOTES, 'UTF-8'); ?>)</p>
+        </div>
     </div>
     
-    <center style="font-size: 13px; font-weight:bold; color: #475569;">Nomor Pendaftaran:</center>
+    <center style="font-size: 12px; font-weight:bold; color: #475569; text-transform: uppercase;">Nomor Registrasi Sistem</center>
     <div class="no-reg">
         <?php echo htmlspecialchars($data['no_pendaftaran'], ENT_QUOTES, 'UTF-8'); ?>
     </div>
@@ -230,96 +232,102 @@ function tgl_indo($tanggal) {
     <div class="box-status" style="background: <?php echo $status_warna_bg; ?>; border-color: <?php echo $status_border; ?>; color: <?php echo $status_warna_teks; ?>;">
         <h3><?php echo $status_teks; ?></h3>
         <span><?php echo $pesan_tambahan; ?></span>
-        <span style="background: #f6f4f3; padding: 5px; border-radius: 7px;"><?php echo $catatan_panitia; ?></span>
-
+        <?php if (!empty($data['catatan_panitia'])): ?>
+            <span style="background: #f6f4f3; padding: 5px; border-radius: 7px; margin-top: 5px; display: inline-block;">📋 Catatan: <?php echo $catatan_panitia; ?></span>
+        <?php endif; ?>
     </div>
 
-    <table class="main-table">
-        <tr><td>Nama Lengkap</td><td>: <?php echo htmlspecialchars($data['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
-        <tr><td>Nomor Induk Kependudukan (NIK)</td><td>: <?php echo htmlspecialchars($data['nik'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
-        <tr><td>Nomor Kartu Keluarga (KK DKI)</td><td>: <?php echo htmlspecialchars($data['no_kk'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
-        <tr><td>Tempat, Tgl Lahir</td><td>: <?php echo htmlspecialchars($data['tempat_lahir'], ENT_QUOTES, 'UTF-8') . ", " . tgl_indo($data['tanggal_lahir']); ?></td></tr>
-        <tr><td>NISN</td><td>: <?php echo htmlspecialchars($data['nisn'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
-        <tr><td>Nomor Sidanira</td><td>: <?php echo htmlspecialchars($data['no_ijazah'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
-        <tr><td>Alamat Domisili</td><td>: <?php echo htmlspecialchars($data['alamat'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
-        <tr><td>Kelurahan / Desa</td><td>: <?php echo htmlspecialchars($data['kelurahan'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
-        <tr><td>Kecamatan</td><td>: <?php echo htmlspecialchars($data['kecamatan'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
-        <tr><td>Asal Sekolah</td><td>: <?php echo htmlspecialchars($data['asal_sekolah'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
-        <tr><td>No. WhatsApp</td><td>: <?php echo htmlspecialchars($data['no_whatsapp'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
-        <tr><td>Pilihan Jurusan</td><td>: <b style="color:#4f46e5;"><?php echo $jrs; ?></b></td></tr>
+    <!-- GRID LAYOUT KIRI DAN KANAN -->
+    <div class="grid-container">
         
-        <tr>
-            <td>Riwayat Penyakit Khusus</td>
-            <td>: <span style="color:#dc2626; font-weight:bold;"><?php echo htmlspecialchars($data['riwayat_penyakit'], ENT_QUOTES, 'UTF-8'); ?></span></td>
-        </tr>
+        <!-- KOLOM KIRI: IDENTITAS -->
+        <div class="col-kiri">
+            <h4 class="section-title">A. Identitas Diri & Keluarga</h4>
+            <table class="main-table">
+                <tr><td>Nama Lengkap</td><td>: <b><?php echo htmlspecialchars($data['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?></b></td></tr>
+                <tr><td>Jenis Kelamin</td><td>: <?php echo htmlspecialchars($jk, ENT_QUOTES, 'UTF-8'); ?></td></tr>
+                <tr><td>Agama</td><td>: <?php echo htmlspecialchars($agama, ENT_QUOTES, 'UTF-8'); ?></td></tr>
+                <tr><td>Tempat, Tgl Lahir</td><td>: <?php echo htmlspecialchars($data['tempat_lahir'], ENT_QUOTES, 'UTF-8') . ", " . tgl_indo($data['tanggal_lahir']); ?></td></tr>
+                
+                <tr><td>NIK Siswa</td><td>: <?php echo htmlspecialchars($data['nik'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
+                <tr><td>Nomor KK</td><td>: <?php echo htmlspecialchars($data['no_kk'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
+                <tr><td>Tgl. Terbit KK</td><td>: <?php echo tgl_indo($tgl_kk); ?></td></tr>
+                
+                <tr><td>Nama Ibu Kandung</td><td>: <?php echo htmlspecialchars($nama_ibu, ENT_QUOTES, 'UTF-8'); ?></td></tr>
+                <tr><td>No. WhatsApp (Aktif)</td><td>: <?php echo htmlspecialchars($data['no_whatsapp'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
+                
+                <tr><td>Alamat Domisili</td><td>: <?php echo htmlspecialchars($data['alamat'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
+                <tr><td>Kelurahan / Desa</td><td>: <?php echo htmlspecialchars($data['kelurahan'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
+                <tr><td>Kecamatan</td><td>: <?php echo htmlspecialchars($data['kecamatan'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
+                
+                <tr>
+                    <td>Riwayat Penyakit</td>
+                    <td>: <span style="color:#dc2626; font-weight:bold;"><?php echo htmlspecialchars($data['riwayat_penyakit'], ENT_QUOTES, 'UTF-8'); ?></span></td>
+                </tr>
+                <tr>
+                    <td>Kebutuhan Khusus</td>
+                    <td>: <span style="color:#d97706; font-weight:bold;"><?php echo htmlspecialchars($kb_khusus, ENT_QUOTES, 'UTF-8'); ?></span></td>
+                </tr>
+            </table>
+        </div>
 
-        <tr>
-            <td>Rincian Evaluasi Nilai Berkas</td>
-            <td>
-                <div class="box-nilai">
-                    <table class="tabel-rincian">
-                        <tr>
-                            <td style="width: 48%;">Sidanira Asli : <span class="nilai-asli"><?php echo number_format($asli_skl, 2); ?></span></td>
-                            <td style="color: #64748b;">&rarr; Bobot 70% = <span class="nilai-bobot"><?php echo number_format($bobot_skl, 2); ?></span></td>
-                        </tr>
-                        <tr>
-                            <td>TKA Asli &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <span class="nilai-asli"><?php echo number_format($asli_tka, 2); ?></span></td>
-                            <td style="color: #64748b;">&rarr; Bobot 30% = <span class="nilai-bobot"><?php echo number_format($bobot_tka, 2); ?></span></td>
-                        </tr>
-                        <tr>
-                            <td colspan="2" class="garis-batas">
-                                <div style="margin-bottom: 4px; color: #475569;">Hasil Nilai Berkas Asli (Rata-rata) : <b><?php echo number_format($nilai_berkas_asli, 2); ?></b></div>
-                                <strong style="color: #0f172a;">Nilai Berkas Berbobot (70% + 30%) : <span style="color:#4f46e5;"><?php echo number_format($nilai_berkas_bobot, 2); ?></span></strong>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-            </td>
-        </tr>
-        
-        <!-- <tr>
-            <td>Nilai Ujian (Test Panitia)</td>
-            <td> 
-                <?php if ($nilai_test > 0): ?>
-                    <span class="badge-nilai"><?php echo number_format($nilai_test, 2); ?></span>
-                <?php else: ?>
-                    <span class="badge-tunggu">⏳ Menunggu</span>
+        <!-- KOLOM KANAN: AKADEMIK & BERKAS -->
+        <div class="col-kanan">
+            <h4 class="section-title">B. Data Akademik & Jurusan</h4>
+            <table class="main-table">
+                <tr><td>Asal Sekolah</td><td>: <b><?php echo htmlspecialchars($data['asal_sekolah'], ENT_QUOTES, 'UTF-8'); ?></b></td></tr>
+                <tr><td>NPSN Sekolah</td><td>: <?php echo htmlspecialchars($npsn, ENT_QUOTES, 'UTF-8'); ?></td></tr>
+                <tr><td>NISN</td><td>: <?php echo htmlspecialchars($data['nisn'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
+                <tr><td>Nomor Sidanira</td><td>: <?php echo htmlspecialchars($data['no_ijazah'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
+                <tr><td>Pilihan Konsentrasi</td><td>: <b style="color:#4f46e5;"><?php echo $jrs; ?></b></td></tr>
+                
+                <tr>
+                    <td colspan="2">
+                        <div class="box-nilai">
+                            <table class="tabel-rincian">
+                                <tr>
+                                    <td style="width: 50%;">Sidanira Asli : <span class="nilai-asli"><?php echo number_format($asli_skl, 2); ?></span></td>
+                                    <td style="color: #64748b;">&rarr; Bobot 70% = <span class="nilai-bobot"><?php echo number_format($bobot_skl, 2); ?></span></td>
+                                </tr>
+                                <tr>
+                                    <td>TKA Asli &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <span class="nilai-asli"><?php echo number_format($asli_tka, 2); ?></span></td>
+                                    <td style="color: #64748b;">&rarr; Bobot 30% = <span class="nilai-bobot"><?php echo number_format($bobot_tka, 2); ?></span></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" class="garis-batas">
+                                        <div style="margin-bottom: 4px; color: #475569;">Hasil Nilai Berkas Asli (Rata-rata) : <b><?php echo number_format($nilai_berkas_asli, 2); ?></b></div>
+                                    </td>
+                                </tr>
+                            </table>
+                            <div class="box-hasil-akhir">
+                                <span style="font-size: 11px; color: #4b5563; font-weight: 600;">NILAI SELEKSI AKHIR BERBOBOT</span>
+                                <?php if ($nilai_berkas_bobot > 0): ?>
+                                    <span class="text-hasil-akhir"><?php echo number_format($nilai_berkas_bobot, 2); ?></span>
+                                <?php else: ?>
+                                    <span class="text-hasil-akhir" style="color: #b45309; font-size:14px;">⏳ Menunggu</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <h4 class="section-title" style="margin-top: 20px;">C. Status Berkas Digital</h4>
+            <table class="main-table">
+                <?php if ($data['status_kjp'] == 'Ya'): ?>
+                    <tr><td>Nomor Tabungan KJP</td><td>: <?php echo htmlspecialchars($data['no_rek_kjp'], ENT_QUOTES, 'UTF-8'); ?> <span class="check-icon">✓ Ada</span></td></tr>
                 <?php endif; ?>
-            </td>
-        </tr> -->
-
-        <tr>
-            <td style="vertical-align: middle;"><strong>Hasil Akhir Nilai</strong></td>
-            <td>
-                <div class="box-hasil-akhir">
-                    <span style="font-size: 10px; color: #4b5563; font-weight: 600;">Nilai Seleksi Akhir</span>
-                    <?php if ($nilai_berkas_bobot > 0): ?>
-                        <span class="text-hasil-akhir">= <?php echo number_format($nilai_berkas_bobot, 2); ?></span>
-                    <?php else: ?>
-                        <span class="text-hasil-akhir" style="color: #b45309;">= ⏳ Menunggu</span>
-                    <?php endif; ?>
-                </div>
-            </td>
-        </tr>
-        <?php if ($data['status_kjp'] == 'Ya'): ?>
-            <tr><td>Nomor Rekening KJP</td><td>: <?php echo htmlspecialchars($data['no_rek_kjp'], ENT_QUOTES, 'UTF-8'); ?></td></tr>
-            <tr><td>Lampiran Buku Tabungan KJP</td><td>: <span class="check-icon">✓ Sudah Terunggah</span></td></tr>
-        <?php endif; ?>
-
-        <tr><td>Lampiran Scan Ijazah / Sidanira</td><td>: <span class="check-icon">✓ Sudah Terunggah</span></td></tr>
-        <tr><td>Lampiran Scan TKA</td><td>: <span class="check-icon">✓ Sudah Terunggah</span></td></tr>
-        <tr><td>Lampiran Scan KK</td><td>: <span class="check-icon">✓ Sudah Terunggah</span></td></tr>
-        <tr><td>Lampiran Scan Akte</td><td>: <span class="check-icon">✓ Sudah Terunggah</span></td></tr>
-        <tr><td>Lampiran Scan KTP Bapak</td><td>: <span class="check-icon">✓ Sudah Terunggah</span></td></tr>
-        <tr><td>Lampiran Scan KTP Ibu</td><td>: <span class="check-icon">✓ Sudah Terunggah</span></td></tr>
-        <tr><td>Lampiran Scan SPTJM Bermeterai</td><td>: <span class="check-icon">✓ Sudah Terunggah</span></td></tr>
-        
-        <tr><td>Tanggal Daftar / Submit</td><td>: <b style="color:#475569;"><?php echo tgl_indo($data['tanggal_daftar']); ?></b></td></tr>
-    </table>
+                <tr><td>Kelengkapan Dasar</td><td>: <span class="check-icon">✓ Ijazah/Sidanira</span> <span class="check-icon">✓ TKA/SKHU</span></td></tr>
+                <tr><td>Kelengkapan Kependudukan</td><td>: <span class="check-icon">✓ Kartu Keluarga</span> <span class="check-icon">✓ Akta Lahir</span> <span class="check-icon">✓ KTP Orang Tua</span></td></tr>
+                <tr><td>Pakta Integritas</td><td>: <span class="check-icon">✓ SPTJM Bermeterai</span></td></tr>
+                <tr><td>Waktu Pendaftaran</td><td>: <b style="color:#475569;"><?php echo tgl_indo($data['tanggal_daftar']); ?></b></td></tr>
+            </table>
+        </div>
+    </div> <!-- End Grid Container -->
 
     <div class="btn-area">
-        <button onclick="window.print();" class="btn-print">📥 Unduh / Cetak Bukti</button>
-        <a href="index.php" class="btn-next">Kembali ke Portal Utama ➔</a>
+        <button onclick="window.print();" class="btn-print">🖨️ Cetak / Simpan PDF (Landscape)</button>
+        <a href="index.php" class="btn-next">Kembali ke Beranda ➔</a>
     </div>
 </div>
 

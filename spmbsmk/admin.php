@@ -20,6 +20,85 @@ $_GET['gel'] = isset($_GET['gel']) ? preg_replace('/[^a-zA-Z0-9]/', '', $_GET['g
 
 include 'koneksi.php';
 
+// ==========================================
+// 1. PROSES AKSI STATUS JAKEDU (INDIVIDU)
+// ==========================================
+if (isset($_GET['jakedu']) && isset($_GET['id_siswa'])) {
+    $id_jakedu = (int)$_GET['id_siswa'];
+    $status_baru = ($_GET['jakedu'] == 'sudah') ? 'Sudah' : 'Belum';
+    mysqli_query($conn, "UPDATE pendaftar SET status_jakedu = '$status_baru' WHERE id = $id_jakedu");
+    
+    $redirect_tab = $_GET['tab'];
+    $redirect_gel = $_GET['gel'];
+    echo "<script>window.location.href='admin.php?tab=$redirect_tab&gel=$redirect_gel';</script>";
+    exit;
+}
+
+// ==========================================
+// 2. PROSES JAKEDU MASSAL (KOLEKTIF)
+// ==========================================
+if (isset($_GET['jakedu_massal']) && isset($_GET['jurusan'])) {
+    $status_j = $_GET['jakedu_massal'] == 'sudah' ? 'Sudah' : 'Belum';
+    $jur_j = mysqli_real_escape_string($conn, $_GET['jurusan']);
+    $gel_j = mysqli_real_escape_string($conn, $_GET['gel']);
+    $filter_gel = ($gel_j == 'Semua') ? "" : " AND gelombang = '$gel_j'";
+
+    mysqli_query($conn, "UPDATE pendaftar SET status_jakedu = '$status_j' WHERE pilihan_jurusan = '$jur_j' $filter_gel");
+    
+    $tab_r = isset($_GET['tab']) ? $_GET['tab'] : 'akl';
+    echo "<script>alert('Status Jakedu kolektif berhasil diset!'); window.location.href='admin.php?tab=$tab_r&gel=$gel_j';</script>";
+    exit;
+}
+
+// ==========================================
+// 3. PROSES DUPLIKAT KE GELOMBANG LAIN
+// ==========================================
+if (isset($_GET['duplikat_id']) && isset($_GET['ke_gel'])) {
+    $id_dup = (int)$_GET['duplikat_id'];
+    $gel_tujuan = (int)$_GET['ke_gel'];
+    $tab_r = isset($_GET['tab']) ? $_GET['tab'] : 'akl';
+    $gel_r = isset($_GET['gel']) ? $_GET['gel'] : 'Semua';
+
+    // Cek apakah NISN ini sudah ada di gelombang tujuan
+    $q_cek = mysqli_query($conn, "SELECT nisn FROM pendaftar WHERE id = $id_dup");
+    if ($r_cek = mysqli_fetch_assoc($q_cek)) {
+        $nisn = $r_cek['nisn'];
+        $cek_eks = mysqli_query($conn, "SELECT id FROM pendaftar WHERE nisn = '$nisn' AND gelombang = '$gel_tujuan'");
+        if (mysqli_num_rows($cek_eks) > 0) {
+            echo "<script>alert('Gagal! Siswa ini sudah pernah terdaftar atau diduplikat di Gelombang $gel_tujuan.'); window.history.back();</script>";
+            exit;
+        }
+    }
+
+    // Generate No Daftar Baru (Agar tidak bentrok Primary Key)
+    $no_daftar_baru = "SPMB-SMKPB1-" . date('Y') . "-" . rand(1000, 9999) . "-G" . $gel_tujuan;
+
+    // Salin Data ke Tabel Utama (Berkas tetap menggunakan path yang lama)
+    $sql_dup = "INSERT INTO pendaftar 
+        (no_pendaftaran, nama_lengkap, nik, tempat_lahir, tanggal_lahir, nisn, no_ijazah, asal_sekolah, riwayat_penyakit, alamat, kelurahan, kecamatan, no_whatsapp, pilihan_jurusan, nilai_skl, nilai_tka, nilai_test, file_ijazah, file_tka, file_kk, file_akte, no_kk, status_konfirmasi, catatan_panitia, alasan_pembatalan, file_ktp_bapak, file_ktp_ibu, file_sptjm, status_kjp, no_rek_kjp, file_tabungan_kjp, gelombang, tanggal_daftar, is_detail_filled, status_jakedu)
+        SELECT 
+        '$no_daftar_baru', nama_lengkap, nik, tempat_lahir, tanggal_lahir, nisn, no_ijazah, asal_sekolah, riwayat_penyakit, alamat, kelurahan, kecamatan, no_whatsapp, pilihan_jurusan, nilai_skl, nilai_tka, 0.00, file_ijazah, file_tka, file_kk, file_akte, no_kk, 'Menunggu', NULL, NULL, file_ktp_bapak, file_ktp_ibu, file_sptjm, status_kjp, no_rek_kjp, file_tabungan_kjp, '$gel_tujuan', NOW(), is_detail_filled, 'Belum'
+        FROM pendaftar WHERE id = $id_dup";
+
+    if (mysqli_query($conn, $sql_dup)) {
+        $new_id = mysqli_insert_id($conn);
+        
+        // Salin Data ke Tabel Detail
+        $sql_dup_det = "INSERT INTO pendaftar_detail 
+            (pendaftar_id, jenis_kelamin, tanggal_kk, nama_ibu, agama, npsn_sekolah, kebutuhan_khusus)
+            SELECT 
+            $new_id, jenis_kelamin, tanggal_kk, nama_ibu, agama, npsn_sekolah, kebutuhan_khusus
+            FROM pendaftar_detail WHERE pendaftar_id = $id_dup";
+            
+        mysqli_query($conn, $sql_dup_det);
+        
+        echo "<script>alert('Siswa berhasil diduplikat ke Gelombang $gel_tujuan!'); window.location.href='admin.php?tab=$tab_r&gel=$gel_r';</script>";
+    } else {
+        echo "<script>alert('Terjadi kesalahan saat duplikasi: " . mysqli_error($conn) . "'); window.history.back();</script>";
+    }
+    exit;
+}
+
 // Proses Update Jadwal & Pengaturan Kontrol Sistem masal
 if (isset($_POST['simpan_jadwal'])) {
     $gel1 = mysqli_real_escape_string($conn, $_POST['buka_gel_1']);
@@ -63,6 +142,13 @@ function hitungKuota($jurusan, $status, $gel, $conn) {
     $q = mysqli_query($conn, "SELECT COUNT(*) as total FROM pendaftar WHERE pilihan_jurusan = '$jurusan' AND status_konfirmasi = '$status' $filter");
     return mysqli_fetch_assoc($q)['total'];
 }
+
+// LOGIKA PEMBAGIAN KUOTA PER JURUSAN
+$gelombang_id = (int)$pengaturan['gelombang_aktif'];
+$kuota_g1 = (int)$pengaturan['max_kuota_g1'];
+$kuota_g2 = (int)$pengaturan['max_kuota_g2'];
+$kuota_aktif = ($gelombang_id == 1) ? $kuota_g1 : $kuota_g2;
+$kuota_per_jurusan = floor($kuota_aktif / 2); // Kuota dibagi 2 rata untuk AKL & MPLB
 
 $tot_akl_all = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as total FROM pendaftar WHERE pilihan_jurusan = 'Akuntansi dan Keuangan Lembaga' $sql_gel_filter"))['total'];
 $akl_utama    = hitungKuota('Akuntansi dan Keuangan Lembaga', 'LULUS', $gel_aktif, $conn);
@@ -138,6 +224,14 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
         .bg-offline { background: #334155; }
         .bg-wa { background: #25D366; color: white; } 
         .bg-kolektif { background: #f43f5e; color: white; } 
+        
+        /* CSS JAKEDU */
+        .bg-jakedu-set { background: #059669; color: white; border: 1px solid #047857; }
+        .bg-jakedu-unset { background: #94a3b8; color: white; }
+        .badge-jkd { font-size: 10px; padding: 3px 6px; border-radius: 4px; font-weight: 800; display: inline-block; margin-left: 6px; vertical-align: middle; }
+        .jkd-done { background: #d1fae5; color: #065f46; border: 1px solid #34d399; }
+        .jkd-none { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+        
         .status-badge { padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 4px; text-transform: uppercase; }
         .badge-locked-utama { background: #d1fae5; color: #065f46; border: 1px solid #34d399; }
         .badge-batal { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
@@ -166,6 +260,10 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
         <div style="display:flex; gap:10px; flex-wrap: wrap;">
             <a href="cetak_nilai_kolektif.php?gel=<?php echo $gel_aktif; ?>" target="_blank" class="btn-action bg-edit" style="background: #0ea5e9;">📊 Cetak Rekap Nilai</a>
             <a href="cetak_data_full.php?gel=<?php echo $gel_aktif; ?>" target="_blank" class="btn-action" style="background: #14b8a6; color: white;">🗂️ Cetak Full Data</a>
+            
+            <!-- TOMBOL BARU: CETAK SISWA LULUS -->
+            <a href="cetak_data_lulus.php?gel=<?php echo $gel_aktif; ?>" target="_blank" class="btn-action" style="background: #10b981; color: white;">🏆 Cetak Siswa Lulus</a>
+            
             <a href="broadcast_wa.php" class="btn-action" style="background: #25D366; color: white;">📢 Broadcast WA</a>
             <a href="cetak_kolektif.php" target="_blank" class="btn-action bg-kolektif">📑 Cetak Bukti Kolektif</a>
             <a href="formulir_offline.php" target="_blank" class="btn-action bg-offline">🖨️ Cetak Form Offline</a>
@@ -175,21 +273,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
             <a href="logout.php" class="btn-action bg-danger-btn" onclick="return confirm('Keluar sistem?')">Logout</a>
         </div>
     </div>
-
-    <?php
-        // Logika Peringatan Pembayaran (Paid)
-        $tanggal_sekarang = new DateTime('2026-07-08'); // Tanggal hari ini
-        $batas_bayar = new DateTime('2026-07-11');
-        $selisih = $tanggal_sekarang->diff($batas_bayar)->days;
-
-        if ($tanggal_sekarang <= $batas_bayar) {
-            echo "
-            <div style='background: #fee2e2; border: 1px solid #f87171; color: #991b1b; padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; font-weight: 700; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);'>
-                ⚠️ PERINGATAN PEMBAYARAN: Batas pembayaran terakhir adalah 11 Juli 2026. <br>
-                <span style='color: #dc2626;'>Sisa waktu Anda tinggal " . $selisih . " hari lagi. Mohon segera selesaikan administrasi!</span>
-            </div>";
-        }
-    ?>
+    <?php include "tenggat/tenggat.php" ?>
     <div class="filter-container">
         <div class="filter-gelombang">
             <span style="font-weight:700; color:#475569; font-size:14px;">🎛️ Filter Tampilan:</span>
@@ -218,12 +302,12 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
         <div class="card-box" style="border-left: 5px solid #10b981;">
             <h4>Statistik AKL (<?php echo $label_gelombang; ?>)</h4>
             <div style="font-size: 26px; font-weight: 800; color:#1e293b;"><?php echo $tot_akl_all; ?> <span style="font-size:14px; color:#64748b;">Mendaftar</span></div>
-            <div class="stat-badge-small" style="background: #d1fae5; color: #065f46; border: 1px solid #34d399;">Lulus: <?php echo $akl_utama; ?> Siswa</div>
+            <div class="stat-badge-small" style="background: #d1fae5; color: #065f46; border: 1px solid #34d399;">Lulus: <?php echo $akl_utama; ?> / Kuota: <?php echo $kuota_per_jurusan; ?></div>
         </div>
         <div class="card-box" style="border-left: 5px solid #0284c7;">
             <h4>Statistik MPLB (<?php echo $label_gelombang; ?>)</h4>
             <div style="font-size: 26px; font-weight: 800; color:#1e293b;"><?php echo $tot_mplb_all; ?> <span style="font-size:14px; color:#64748b;">Mendaftar</span></div>
-            <div class="stat-badge-small" style="background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc;">Lulus: <?php echo $mplb_utama; ?> Siswa</div>
+            <div class="stat-badge-small" style="background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc;">Lulus: <?php echo $mplb_utama; ?> / Kuota: <?php echo $kuota_per_jurusan; ?></div>
         </div>
     </div>
 
@@ -233,14 +317,21 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
         </div>
     <?php endif; ?>
 
+    <!-- TAB: AKUNTANSI -->
     <button class="btn-toggle-jurusan <?php echo ($tab_aktif == 'akl') ? 'aktif' : ''; ?>" onclick="toggleTabel('panel_akl', this, 'akl')" style="border-left: 6px solid #10b981;">
-
         <h3>📁 Akuntansi dan Keuangan Lembaga (AKL)</h3>
         <div>
-            <a href="konfirmasi_kolektif.php?jurusan=Akuntansi%20dan%20Keuangan%20Lembaga&gel=<?php echo $gel_aktif; ?>&status=LULUS" 
-            class="btn-action bg-success-btn" onclick="return confirm('Yakin meluluskan semua pendaftar AKL <?php echo $label_gelombang; ?>?')">Luluskan Semua</a>
+            <a href="cetak_data_lulus.php?gel=<?php echo $gel_aktif; ?>&jurusan=Akuntansi%20dan%20Keuangan%20Lembaga" target="_blank" class="btn-action" style="background: #10b981;">Cetak Lulus AKL</a>
+
+            <a href="konfirmasi_kolektif.php?jurusan=Akuntansi%20dan%20Keuangan%20Lembaga&gel=<?php echo $gel_aktif; ?>&status=LULUS&limit=<?php echo $kuota_per_jurusan; ?>" 
+            class="btn-action bg-success-btn" onclick="return confirm('Yakin meluluskan <?php echo $kuota_per_jurusan; ?> siswa teratas untuk AKL di <?php echo $label_gelombang; ?>?')">Luluskan <?php echo $kuota_per_jurusan; ?> Teratas (Sesuai Kuota)</a>
+            
             <a href="konfirmasi_kolektif.php?jurusan=Akuntansi%20dan%20Keuangan%20Lembaga&gel=<?php echo $gel_aktif; ?>&status=Menunggu" 
             class="btn-action bg-reset-btn" onclick="return confirm('Yakin reset status semua pendaftar AKL <?php echo $label_gelombang; ?>?')">Reset Semua</a>
+            
+            <a href="admin.php?jakedu_massal=sudah&jurusan=Akuntansi%20dan%20Keuangan%20Lembaga&gel=<?php echo $gel_aktif; ?>&tab=akl" 
+            class="btn-action bg-jakedu-set" onclick="return confirm('Tandai SUDAH di-input ke Jakedu untuk semua pendaftar AKL <?php echo $label_gelombang; ?>?')">✅ Set Jakedu Semua</a>
+
             <span class="badge-count" style="background: #d1fae5; color: #065f46;">Lulus: <?php echo $akl_utama; ?> / <?php echo $tot_akl_all; ?></span>
         </div>
     </button>
@@ -274,6 +365,14 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                                 $zb = "<span class='status-badge badge-utama'>Menunggu ($rank)</span>";
                             }
 
+                            // Jakedu Logic Display
+                            $status_jakedu = isset($row['status_jakedu']) ? $row['status_jakedu'] : 'Belum';
+                            if ($status_jakedu == 'Sudah') {
+                                $badge_jakedu = "<span class='badge-jkd jkd-done'>✅ JAKEDU</span>";
+                            } else {
+                                $badge_jakedu = "<span class='badge-jkd jkd-none'>❌ JAKEDU</span>";
+                            }
+
                             $no_hp = preg_replace('/[^0-9]/', '', $row['no_whatsapp']);
                             if (substr($no_hp, 0, 1) == '0') {
                                 $no_wa = '62' . substr($no_hp, 1);
@@ -282,12 +381,12 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
                             }
                             
                             $alasan_wa = !empty($row['alasan_pembatalan']) ? "\n*Catatan:* " . trim($row['alasan_pembatalan']) : "";
-$status_wa = $row['status_konfirmasi'];
-if($status_wa == 'Tidak Jadi') { $status_wa = "TIDAK LOLOS / BATAL"; }
+                            $status_wa = $row['status_konfirmasi'];
+                            if($status_wa == 'Tidak Jadi') { $status_wa = "TIDAK LOLOS / BATAL"; }
 
-$pesan_wa_mentah = "Halo Bapak/Ibu Calon Wali Murid dari *" . $row['nama_lengkap'] . "* (NISN: " . $row['nisn'] . ").\n\nBerdasarkan hasil seleksi Panitia SPMB SMK PERMATA BUNDA I JAKARTA, kami menginformasikan bahwa status pendaftaran putra/putri Anda saat ini adalah: *" . $status_wa . "*" . $alasan_wa . "\n\nJurusan: *" . $row['pilihan_jurusan'] . "*\nJalur: *Gelombang " . $row['gelombang'] . "*\n\nSilakan unduh atau cetak dokumen hasil seleksi pada tautan berikut:\n" . $domain_web . "/bukti.php?no_pendaftaran=" . $row['no_pendaftaran'] . "\n\nSilahkan lihat hasil live board pada tautan berikut\n*https://smkpb1.my.id/spmb/spmbsmk/live_board.php*\n\nJika Lulus/Kurang Berkas silahkan serahkan lalu ambil formulir daftar ulang ke sekolah\n\nTerima kasih.";
+                            $pesan_wa_mentah = "Halo Bapak/Ibu Calon Wali Murid dari *" . $row['nama_lengkap'] . "* (NISN: " . $row['nisn'] . ").\n\nBerdasarkan hasil seleksi Panitia SPMB SMK PERMATA BUNDA I JAKARTA, kami menginformasikan bahwa status pendaftaran putra/putri Anda saat ini adalah: *" . $status_wa . "*" . $alasan_wa . "\n\nJurusan: *" . $row['pilihan_jurusan'] . "*\nJalur: *Gelombang " . $row['gelombang'] . "*\n\nSilakan unduh atau cetak dokumen hasil seleksi pada tautan berikut:\n" . $domain_web . "/bukti.php?no_pendaftaran=" . $row['no_pendaftaran'] . "\n\nSilahkan lihat hasil live board pada tautan berikut\n*https://smkpb1.my.id/spmb/spmbsmk/live_board.php*\n\nJika Lulus/Kurang Berkas silahkan serahkan lalu ambil formulir daftar ulang ke sekolah\n\nTerima kasih.";
 
-$pesan_wa = urlencode($pesan_wa_mentah);
+                            $pesan_wa = urlencode($pesan_wa_mentah);
 
                             $asli_skl = (float)$row['nilai_skl'];
                             $asli_tka = (float)$row['nilai_tka'];
@@ -301,7 +400,7 @@ $pesan_wa = urlencode($pesan_wa_mentah);
                         <td style="text-align:center; font-size:16px;"><b><?php echo $rank; ?></b></td>
                         <td>
                             <div class="identitas-box">
-                                <span style="font-weight: 800; font-size: 14px;"><?php echo htmlspecialchars($row['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span style="font-weight: 800; font-size: 14px;"><?php echo htmlspecialchars($row['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?> <?php echo $badge_jakedu; ?></span>
                                 <span class="small-text">NISN: <?php echo htmlspecialchars($row['nisn'], ENT_QUOTES, 'UTF-8');?></span>
                                 <span class="small-text">Nomor Peserta: <?php echo htmlspecialchars($row['no_ijazah'], ENT_QUOTES, 'UTF-8');?></span>
                                 <span class="small-text">Jalur: <b style="color:#d97706; text-transform: capitalize;">Gelombang <?php echo htmlspecialchars($row['gelombang'], ENT_QUOTES, 'UTF-8'); ?></b></span>
@@ -340,18 +439,27 @@ $pesan_wa = urlencode($pesan_wa_mentah);
                         </td>
                         <td>
                             <div class="btn-group">
-                                
+                                <?php if($status_jakedu == 'Belum'): ?>
+                                    <a href="admin.php?jakedu=sudah&id_siswa=<?php echo $row['id']; ?>&tab=akl&gel=<?php echo $gel_aktif; ?>" class="btn-action bg-jakedu-set" onclick="return confirm('Tandai siswa ini SUDAH di-input ke Jakedu?')">Input Jakedu</a>
+                                <?php else: ?>
+                                    <a href="admin.php?jakedu=belum&id_siswa=<?php echo $row['id']; ?>&tab=akl&gel=<?php echo $gel_aktif; ?>" class="btn-action bg-jakedu-unset" onclick="return confirm('Batalkan status Jakedu siswa ini?')">Batal Jakedu</a>
+                                <?php endif; ?>
+
                                 <a href="bukti.php?no_pendaftaran=<?php echo urlencode($row['no_pendaftaran']); ?>" target="_blank" class="btn-action bg-print-bukti">Bukti</a>
+                                
                                 <?php if($row['status_konfirmasi'] == 'Menunggu'): ?>
                                     <a href="edit.php?id=<?php echo $row['id']; ?>&tab=akl" class="btn-action bg-edit">Edit Siswa/Nilai</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=LULUS&tab=akl" class="btn-action bg-success-btn" onclick="return confirm('Kunci kelulusan untuk siswa ini?')">Lulus</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=akl" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan MPLB?')">Lempar MPLB</a>
                                     <a href="#" class="btn-action" style="background:#f97316;" onclick="pindahGelombang(<?php echo $row['id']; ?>, 'akl'); return false;">🔄 Lempar Gel</a>
+                                    <a href="#" class="btn-action bg-edit" style="background:#8b5cf6;" onclick="duplikatGelombang(<?php echo $row['id']; ?>, 'akl'); return false;">📋 Duplikat Gel</a>
+                                    
                                     <a href="#" class="btn-action bg-danger-btn" onclick="let alasan = prompt('Masukkan alasan tidak lulus/batal untuk siswa ini:'); if(alasan === null) return false; if(alasan.trim() === '') { alert('Alasan wajib diisi!'); return false; } window.location.href='konfirmasi.php?id=<?php echo $row['id']; ?>&status=Tidak Jadi&tab=akl&alasan=' + encodeURIComponent(alasan); return false;">Tidak Lulus</a>
                                 <?php else: ?>
                                     <a href="edit.php?id=<?php echo $row['id']; ?>&tab=akl" class="btn-action bg-edit">Edit Data/Nilai</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Menunggu&tab=akl" class="btn-action bg-reset-btn" onclick="return confirm('Kembalikan status siswa ke menunggu?')">Reset Status</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=mplb" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan MPLB?')">Lempar MPLB</a>
+                                    <a href="#" class="btn-action bg-edit" style="background:#8b5cf6;" onclick="duplikatGelombang(<?php echo $row['id']; ?>, 'akl'); return false;">📋 Duplikat Gel</a>
                                     <a href="hapus.php?id=<?php echo $row['id']; ?>&tab=akl" class="btn-action bg-danger-btn" onclick="return confirm('Hapus permanen dari database?')">Hapus</a>
                                 <?php endif; ?>
                             </div>
@@ -363,13 +471,21 @@ $pesan_wa = urlencode($pesan_wa_mentah);
         </div>
     </div>
    
+    <!-- TAB: MPLB -->
     <button class="btn-toggle-jurusan <?php echo ($tab_aktif == 'mplb') ? 'aktif' : ''; ?>" onclick="toggleTabel('panel_mplb', this, 'mplb')" style="border-left: 6px solid #0284c7;">
         <h3>📁 Manajemen Perkantoran dan Layanan Bisnis (MPLB)</h3>
     <div>
-        <a href="konfirmasi_kolektif.php?jurusan=Manajemen%20Perkantoran%20dan%20Layanan%20Bisnis&gel=<?php echo $gel_aktif; ?>&status=LULUS" 
-           class="btn-action bg-success-btn" onclick="return confirm('Yakin meluluskan semua pendaftar MPLB <?php echo $label_gelombang; ?>?')">Luluskan Semua</a>
+        <a href="cetak_data_lulus.php?gel=<?php echo $gel_aktif; ?>&jurusan=Manajemen%20Perkantoran%20dan%20Layanan%20Bisnis" target="_blank" class="btn-action" style="background: #10b981;">Cetak Lulus MPLB</a>
+        
+        <a href="konfirmasi_kolektif.php?jurusan=Manajemen%20Perkantoran%20dan%20Layanan%20Bisnis&gel=<?php echo $gel_aktif; ?>&status=LULUS&limit=<?php echo $kuota_per_jurusan; ?>" 
+           class="btn-action bg-success-btn" onclick="return confirm('Yakin meluluskan <?php echo $kuota_per_jurusan; ?> siswa teratas untuk MPLB di <?php echo $label_gelombang; ?>?')">Luluskan <?php echo $kuota_per_jurusan; ?> Teratas (Sesuai Kuota)</a>
+           
         <a href="konfirmasi_kolektif.php?jurusan=Manajemen%20Perkantoran%20dan%20Layanan%20Bisnis&gel=<?php echo $gel_aktif; ?>&status=Menunggu" 
            class="btn-action bg-reset-btn" onclick="return confirm('Yakin reset status semua pendaftar MPLB <?php echo $label_gelombang; ?>?')">Reset Semua</a>
+        
+        <a href="admin.php?jakedu_massal=sudah&jurusan=Manajemen%20Perkantoran%20dan%20Layanan%20Bisnis&gel=<?php echo $gel_aktif; ?>&tab=mplb" 
+           class="btn-action bg-jakedu-set" onclick="return confirm('Tandai SUDAH di-input ke Jakedu untuk semua pendaftar MPLB <?php echo $label_gelombang; ?>?')">✅ Set Jakedu Semua</a>
+
         <span class="badge-count" style="background: #d1fae5; color: #065f46;">Lulus: <?php echo $mplb_utama; ?> / <?php echo $tot_mplb_all; ?></span>
     </div>
     </button>
@@ -403,6 +519,14 @@ $pesan_wa = urlencode($pesan_wa_mentah);
                                 $zb = "<span class='status-badge badge-utama'>Menunggu ($rank)</span>";
                             }
 
+                            // Jakedu Logic Display
+                            $status_jakedu = isset($row['status_jakedu']) ? $row['status_jakedu'] : 'Belum';
+                            if ($status_jakedu == 'Sudah') {
+                                $badge_jakedu = "<span class='badge-jkd jkd-done'>✅ JAKEDU</span>";
+                            } else {
+                                $badge_jakedu = "<span class='badge-jkd jkd-none'>❌ JAKEDU</span>";
+                            }
+
                             $no_hp = preg_replace('/[^0-9]/', '', $row['no_whatsapp']);
                             if (substr($no_hp, 0, 1) == '0') {
                                 $no_wa = '62' . substr($no_hp, 1);
@@ -411,12 +535,12 @@ $pesan_wa = urlencode($pesan_wa_mentah);
                             }
                             
                             $alasan_wa = !empty($row['alasan_pembatalan']) ? "\n*Catatan:* " . trim($row['alasan_pembatalan']) : "";
-$status_wa = $row['status_konfirmasi'];
-if($status_wa == 'Tidak Jadi') { $status_wa = "TIDAK LOLOS / BATAL"; }
+                            $status_wa = $row['status_konfirmasi'];
+                            if($status_wa == 'Tidak Jadi') { $status_wa = "TIDAK LOLOS / BATAL"; }
 
-$pesan_wa_mentah = "Halo Bapak/Ibu Calon Wali Murid dari *" . $row['nama_lengkap'] . "* (NISN: " . $row['nisn'] . ").\n\nBerdasarkan hasil seleksi Panitia SPMB SMK PERMATA BUNDA I JAKARTA, kami menginformasikan bahwa status pendaftaran putra/putri Anda saat ini adalah: *" . $status_wa . "*" . $alasan_wa . "\n\nJurusan: *" . $row['pilihan_jurusan'] . "*\nJalur: *Gelombang " . $row['gelombang'] . "*\n\nSilakan unduh atau cetak dokumen hasil seleksi pada tautan berikut:\n" . $domain_web . "/bukti.php?no_pendaftaran=" . $row['no_pendaftaran'] . "\n\nSilahkan lihat hasil live board pada tautan berikut\n*https://smkpb1.my.id/spmb/spmbsmk/live_board.php*\n\nJika Lulus/Kurang Berkas silahkan serahkan lalu ambil formulir daftar ulang ke sekolah\n\nTerima kasih.";
+                            $pesan_wa_mentah = "Halo Bapak/Ibu Calon Wali Murid dari *" . $row['nama_lengkap'] . "* (NISN: " . $row['nisn'] . ").\n\nBerdasarkan hasil seleksi Panitia SPMB SMK PERMATA BUNDA I JAKARTA, kami menginformasikan bahwa status pendaftaran putra/putri Anda saat ini adalah: *" . $status_wa . "*" . $alasan_wa . "\n\nJurusan: *" . $row['pilihan_jurusan'] . "*\nJalur: *Gelombang " . $row['gelombang'] . "*\n\nSilakan unduh atau cetak dokumen hasil seleksi pada tautan berikut:\n" . $domain_web . "/bukti.php?no_pendaftaran=" . $row['no_pendaftaran'] . "\n\nSilahkan lihat hasil live board pada tautan berikut\n*https://smkpb1.my.id/spmb/spmbsmk/live_board.php*\n\nJika Lulus/Kurang Berkas silahkan serahkan lalu ambil formulir daftar ulang ke sekolah\n\nTerima kasih.";
 
-$pesan_wa = urlencode($pesan_wa_mentah);
+                            $pesan_wa = urlencode($pesan_wa_mentah);
 
                             $asli_skl = (float)$row['nilai_skl'];
                             $asli_tka = (float)$row['nilai_tka'];
@@ -430,7 +554,7 @@ $pesan_wa = urlencode($pesan_wa_mentah);
                         <td style="text-align:center; font-size:16px;"><b><?php echo $rank; ?></b></td>
                         <td>
                             <div class="identitas-box">
-                                <span style="font-weight: 800; font-size: 14px;"><?php echo htmlspecialchars($row['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span style="font-weight: 800; font-size: 14px;"><?php echo htmlspecialchars($row['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?> <?php echo $badge_jakedu; ?></span>
                                 <span class="small-text">NISN: <?php echo htmlspecialchars($row['nisn'], ENT_QUOTES, 'UTF-8');?></span>
                                 <span class="small-text">Nomor Peserta: <?php echo htmlspecialchars($row['no_ijazah'], ENT_QUOTES, 'UTF-8');?></span>
                                 <span class="small-text">Jalur: <b style="color:#d97706; text-transform: capitalize;">Gelombang <?php echo htmlspecialchars($row['gelombang'], ENT_QUOTES, 'UTF-8'); ?></b></span>
@@ -469,17 +593,28 @@ $pesan_wa = urlencode($pesan_wa_mentah);
                         </td>
                         <td>
                             <div class="btn-group">
+                                <?php if($status_jakedu == 'Belum'): ?>
+                                    <a href="admin.php?jakedu=sudah&id_siswa=<?php echo $row['id']; ?>&tab=mplb&gel=<?php echo $gel_aktif; ?>" class="btn-action bg-jakedu-set" onclick="return confirm('Tandai siswa ini SUDAH di-input ke Jakedu?')">Input Jakedu</a>
+                                <?php else: ?>
+                                    <a href="admin.php?jakedu=belum&id_siswa=<?php echo $row['id']; ?>&tab=mplb&gel=<?php echo $gel_aktif; ?>" class="btn-action bg-jakedu-unset" onclick="return confirm('Batalkan status Jakedu siswa ini?')">Batal Jakedu</a>
+                                <?php endif; ?>
+
                                 <a href="bukti.php?no_pendaftaran=<?php echo urlencode($row['no_pendaftaran']); ?>" target="_blank" class="btn-action bg-print-bukti">Bukti</a>
+                                
                                 <?php if($row['status_konfirmasi'] == 'Menunggu'): ?>
                                     <a href="edit.php?id=<?php echo $row['id']; ?>&tab=mplb" class="btn-action bg-edit">Edit Siswa/Nilai</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=LULUS&tab=mplb" class="btn-action bg-success-btn" onclick="return confirm('Kunci kelulusan untuk siswa ini?')">Lulus</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=akl" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan AKL?')">Lempar AKL</a>
-                                    <a href="#" class="btn-action" style="background:#f97316;" onclick="pindahGelombang(<?php echo $row['id']; ?>, 'akl'); return false;">🔄 Lempar Gel</a>
+                                    <a href="#" class="btn-action" style="background:#f97316;" onclick="pindahGelombang(<?php echo $row['id']; ?>, 'mplb'); return false;">🔄 Lempar Gel</a>
+                                    <a href="#" class="btn-action bg-edit" style="background:#8b5cf6;" onclick="duplikatGelombang(<?php echo $row['id']; ?>, 'mplb'); return false;">📋 Duplikat Gel</a>
+                                    
                                     <a href="#" class="btn-action bg-danger-btn" onclick="let alasan = prompt('Masukkan alasan tidak lulus/batal untuk siswa ini:'); if(alasan === null) return false; if(alasan.trim() === '') { alert('Alasan wajib diisi!'); return false; } window.location.href='konfirmasi.php?id=<?php echo $row['id']; ?>&status=Tidak Jadi&tab=mplb&alasan=' + encodeURIComponent(alasan); return false;">Tidak Lulus</a>
                                 <?php else: ?>
                                     <a href="edit.php?id=<?php echo $row['id']; ?>&tab=mplb" class="btn-action bg-edit">Edit Data/Nilai</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Menunggu&tab=mplb" class="btn-action bg-reset-btn" onclick="return confirm('Kembalikan status siswa ke menunggu?')">Reset Status</a>
                                     <a href="konfirmasi.php?id=<?php echo $row['id']; ?>&status=Pindah&tab=akl" class="btn-action bg-move-btn" onclick="return confirm('Pindahkan siswa ini ke jurusan AKL?')">Lempar AKL</a>
+                                    <a href="#" class="btn-action bg-edit" style="background:#8b5cf6;" onclick="duplikatGelombang(<?php echo $row['id']; ?>, 'mplb'); return false;">📋 Duplikat Gel</a>
+                                    
                                     <a href="hapus.php?id=<?php echo $row['id']; ?>&tab=mplb" class="btn-action bg-danger-btn" onclick="return confirm('Hapus permanen dari database?')">Hapus</a>
                                 <?php endif; ?>
                             </div>
@@ -558,6 +693,23 @@ $pesan_wa = urlencode($pesan_wa_mentah);
     </div>
 
     <script>
+    function duplikatGelombang(id, tabAsal) {
+        let gel = prompt("Gandakan (Duplikat) siswa ini ke Gelombang mana?\n\nKetik salah satu:\n- 1\n- 2");
+        if (gel !== null) {
+            gel = gel.trim();
+            let gel_valid = "";
+            if (gel === "1") gel_valid = "1";
+            else if (gel === "2") gel_valid = "2";
+            
+            if (gel_valid !== "") {
+                if(confirm("Yakin ingin menduplikasi berkas siswa ini ke Gelombang " + gel_valid + "?")) {
+                    window.location.href = "admin.php?duplikat_id=" + id + "&ke_gel=" + gel_valid + "&tab=" + tabAsal + "&gel=<?php echo $gel_aktif; ?>";
+                }
+            } else {
+                alert("Gagal: Input tidak valid. Anda harus mengetik angka 1 atau 2.");
+            }
+        }
+    }
 
     function pindahGelombang(id, tabAsal) {
         let gel = prompt("Pindahkan siswa ini ke Gelombang mana?\n\nKetik salah satu:\n- 1\n- 2");

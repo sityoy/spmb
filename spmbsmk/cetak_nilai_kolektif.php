@@ -102,16 +102,16 @@ $result = mysqli_query($conn, $query);
                 <th rowspan="2" style="width: 4%;">Umur</th>
                 <th rowspan="2" style="width: 12%;">Asal Sekolah</th>
                 <th rowspan="2" style="width: 4%;">Jurusan</th>
-                <th colspan="2" style="width: 10%;">Sidanira / SKL</th>
+                <!-- <th colspan="2" style="width: 10%;">Sidanira / SKL</th>
                 <th colspan="2" style="width: 10%;">Tes TKA / SKHU</th>
-                <th rowspan="2" style="width: 6%;">Nilai Akhir</th>
+                <th rowspan="2" style="width: 6%;">Nilai Akhir</th> -->
                 <th rowspan="2" style="width: 8%;">Status Seleksi</th>
             </tr>
             <tr>
-                <th>Asli</th>
+                <!-- <th>Asli</th>
                 <th>Bobot(70%)</th>
                 <th>Asli</th>
-                <th>Bobot(30%)</th>
+                <th>Bobot(30%)</th> -->
             </tr>
         </thead>
         <tbody>
@@ -149,7 +149,8 @@ $result = mysqli_query($conn, $query);
                         $status_text = "🔒 LULUS";
                     } elseif ($status_badge == 'Tidak Jadi') {
                         $alasan = !empty($row['alasan_pembatalan']) ? htmlspecialchars($row['alasan_pembatalan'], ENT_QUOTES, 'UTF-8') : 'Mengundurkan Diri';
-                        $status_text = "❌ TIDAK LOLOS GELOMBANG 1 <br><span style='font-size:9.5px; font-weight:normal;'>($alasan)</span>";
+                        $gelombang_siswa = htmlspecialchars($row['gelombang'], ENT_QUOTES, 'UTF-8');
+                        $status_text = "❌ TIDAK LOLOS GELOMBANG $gelombang_siswa <br><span style='font-size:9.5px; font-weight:normal;'>($alasan)</span>";
                         // $class_tr = "row-batal"; 
                     } else {
                         $status_text = "⏳ MENUNGGU";
@@ -164,11 +165,11 @@ $result = mysqli_query($conn, $query);
                 <td><?php echo $umur_output; ?></td>
                 <td class="text-left"><?php echo htmlspecialchars($row['asal_sekolah'], ENT_QUOTES, 'UTF-8'); ?></td>
                 <td><?php echo ($row['pilihan_jurusan'] == 'Akuntansi dan Keuangan Lembaga') ? 'AKL' : 'MPLB'; ?></td>
-                <td><?php echo number_format($asli_skl, 2); ?></td>
+                <!-- <td><?php echo number_format($asli_skl, 2); ?></td>
                 <td style="color: #475569;"><?php echo number_format($bobot_skl, 2); ?></td>
                 <td><?php echo number_format($asli_tka, 2); ?></td>
                 <td style="color: #475569;"><?php echo number_format($bobot_tka, 2); ?></td>
-                <td class="<?php echo ($status_badge == 'Tidak Jadi') ? 'no-strike' : ''; ?>"><b style="font-size: 11.5px;"><?php echo number_format($nilai_berkas_bobot, 2); ?></b></td>
+                <td class="<?php echo ($status_badge == 'Tidak Jadi') ? 'no-strike' : ''; ?>"><b style="font-size: 11.5px;"><?php echo number_format($nilai_berkas_bobot, 2); ?></b></td> -->
                 <td class="<?php echo ($status_badge == 'Tidak Jadi') ? 'no-strike' : ''; ?>"><?php echo $status_text; ?></td>
             </tr>
             <?php 
@@ -181,4 +182,4 @@ $result = mysqli_query($conn, $query);
     </table>
 
 </body>
-</html>
+</html> 
