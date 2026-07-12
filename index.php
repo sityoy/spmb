@@ -313,7 +313,7 @@ date_default_timezone_set('Asia/Jakarta');
 
     <section class="hero">
         <div class="hero-container">
-        <?php include "spmbsmk/tenggat/tenggat.php" ?>
+        <?php include "tenggat/tenggat.php" ?>
         
             <span class="school-tag">Penerimaan Murid Baru T.A 2026/2027</span>
             <h2>Membangun Generasi Unggul,<br>Siap Kerja & Berakhlak Mulia</h2>

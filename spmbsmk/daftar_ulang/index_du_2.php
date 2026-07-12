@@ -6,45 +6,6 @@ if (!isset($_SESSION['login'])) {
 }
 include '../koneksi.php';
 
-// ========================================================
-// LOGIKA 1-KLIK TOGGLE DAFTAR ULANG (TANPA PROSES FORM)
-// ========================================================
-if (isset($_GET['toggle_du'])) {
-    $id_du = (int)$_GET['toggle_du'];
-    
-    // Cek status saat ini
-    $q_cek = mysqli_query($conn, "SELECT status_daftar_ulang FROM pendaftar WHERE id = $id_du");
-    if ($row_cek = mysqli_fetch_assoc($q_cek)) {
-        if ($row_cek['status_daftar_ulang'] == 'Sudah') {
-            // BATALKAN DAFTAR ULANG
-            mysqli_query($conn, "UPDATE pendaftar SET status_daftar_ulang = 'Belum' WHERE id = $id_du");
-            mysqli_query($conn, "DELETE FROM daftar_ulang WHERE id_pendaftar = $id_du");
-        } else {
-            // SET JADI SUDAH DAFTAR ULANG
-            mysqli_query($conn, "UPDATE pendaftar SET status_daftar_ulang = 'Sudah' WHERE id = $id_du");
-            
-            // Masukkan data dummy yang sesuai tipe data kolom agar tidak kena SQL Error 500
-            $cek_du = mysqli_query($conn, "SELECT id_pendaftar FROM daftar_ulang WHERE id_pendaftar = $id_du");
-            if (mysqli_num_rows($cek_du) == 0) {
-                // Catatan: ukuran_baju dikosongkan ('') agar tidak bentrok dengan ENUM database
-                mysqli_query($conn, "INSERT INTO daftar_ulang 
-                    (id_pendaftar, tanggal_du, ukuran_baju, bawa_skl_asli, bawa_kk_fc, bawa_akte_fc, bawa_ktp_ortu_fc, bawa_rapot_fc, catatan_du) 
-                    VALUES 
-                    ($id_du, NOW(), '', 'Tidak', 'Tidak', 'Tidak', 'Tidak', 'Tidak', '')");
-            }
-        }
-    }
-    
-    // Kembalikan ke halaman index.php (karena sudah di dalam folder daftar_ulang)
-    $r_gel = isset($_GET['gel']) ? $_GET['gel'] : 'Semua';
-    $r_jur = isset($_GET['jur']) ? $_GET['jur'] : 'Semua';
-    $r_cari = isset($_GET['cari']) ? $_GET['cari'] : '';
-    
-    header("Location: index.php?gel=$r_gel&jur=".urlencode($r_jur)."&cari=".urlencode($r_cari));
-    exit;
-}
-// ========================================================
-
 // Tangkap Filter
 $gel_aktif = isset($_GET['gel']) ? preg_replace('/[^a-zA-Z0-9]/', '', $_GET['gel']) : 'Semua';
 $jur_aktif = isset($_GET['jur']) ? $_GET['jur'] : 'Semua';
@@ -56,7 +17,7 @@ $sql_jur = ($jur_aktif == 'Semua') ? "" : " AND p.pilihan_jurusan = '$jur_aktif'
 $sql_cari = ($cari == '') ? "" : " AND (p.nama_lengkap LIKE '%$cari%' OR p.nisn LIKE '%$cari%')";
 
 $query = "SELECT p.id, p.no_pendaftaran, p.nama_lengkap, p.nisn, p.pilihan_jurusan, p.gelombang, p.status_daftar_ulang,
-                 d.tanggal_du
+                 d.tanggal_du, d.ukuran_baju, d.bawa_skl_asli, d.bawa_kk_fc, d.bawa_akte_fc, d.bawa_ktp_ortu_fc, d.bawa_rapot_fc, d.catatan_du
           FROM pendaftar p
           LEFT JOIN daftar_ulang d ON p.id = d.id_pendaftar
           WHERE p.status_konfirmasi = 'LULUS' $sql_gel $sql_jur $sql_cari
@@ -103,14 +64,18 @@ $tot_belum = $tot_lulus - $tot_sudah;
         tbody tr:hover { background-color: #f8fafc; }
 
         .btn-action { display: inline-block; padding: 7px 12px; font-size: 12px; font-weight: 600; border-radius: 6px; text-decoration: none; border: none; cursor: pointer; color: white; text-align: center; margin-right: 4px; }
-        .bg-proses { background: #10b981; }
-        .bg-batal { background: #ef4444; }
-        .bg-cetak { background: #4f46e5; }
+        .bg-proses { background: #4f46e5; }
+        .bg-edit { background: #eab308; color: #1e293b !important; }
+        .bg-cetak { background: #10b981; }
         .bg-kembali { background: #64748b; }
         
         .badge-status { padding: 5px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
         .badge-sudah { background: #d1fae5; color: #065f46; border: 1px solid #34d399; }
         .badge-belum { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
+        
+        .checklist-item { font-size: 11.5px; color: #475569; display: inline-block; margin-right: 10px; margin-bottom: 3px; }
+        .check-ya { color: #16a34a; font-weight: bold; }
+        .check-tidak { color: #dc2626; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -175,8 +140,8 @@ $tot_belum = $tot_lulus - $tot_sudah;
                     <th style="width: 25%;">Identitas Siswa</th>
                     <th style="width: 20%;">Jurusan & Gelombang</th>
                     <th style="width: 15%;">Status DU</th>
-                    <th style="width: 17%;">Waktu Pendaftaran Ulang</th>
-                    <th style="width: 20%;">Aksi Cepat</th>
+                    <th style="width: 17%;">Kelengkapan & Baju</th>
+                    <th style="width: 20%;">Aksi Admin</th>
                 </tr>
             </thead>
             <tbody>
@@ -201,29 +166,31 @@ $tot_belum = $tot_lulus - $tot_sudah;
                     <td>
                         <?php if($status_du == 'Sudah'): ?>
                             <span class="badge-status badge-sudah">✅ SUDAH D.U</span>
+                            <span style="display:block; font-size:11px; color:#64748b; margin-top:5px;">
+                                <?php echo date('d/m/Y', strtotime($row['tanggal_du'])); ?>
+                            </span>
                         <?php else: ?>
                             <span class="badge-status badge-belum">❌ BELUM</span>
                         <?php endif; ?>
                     </td>
                     <td>
                         <?php if($status_du == 'Sudah'): ?>
-                            <div style="background:#f8fafc; padding:8px; border-radius:6px; border:1px solid #e2e8f0;">
-                                <b style="color:#4f46e5; font-size: 13px;"><?php echo date('d/m/Y - H:i', strtotime($row['tanggal_du'])); ?></b><br>
-                                <span style="font-size:11px; color:#64748b;">Disetujui Admin</span>
+                            <div style="background:#f8fafc; padding:8px; border-radius:6px; border:1px solid #e2e8f0; display:flex; flex-direction:column;">
+                                <span class="checklist-item">Baju: <b style="color:#4f46e5; font-size:13px;"><?php echo $row['ukuran_baju']; ?></b></span>
+                                <span class="checklist-item">SKL: <span class="<?php echo ($row['bawa_skl_asli']=='Ya')?'check-ya':'check-tidak'; ?>"><?php echo $row['bawa_skl_asli']; ?></span></span>
+                                <span class="checklist-item">KK: <span class="<?php echo ($row['bawa_kk_fc']=='Ya')?'check-ya':'check-tidak'; ?>"><?php echo $row['bawa_kk_fc']; ?></span></span>
+                                <span class="checklist-item">Rapot: <span class="<?php echo ($row['bawa_rapot_fc']=='Ya')?'check-ya':'check-tidak'; ?>"><?php echo $row['bawa_rapot_fc']; ?></span></span>
                             </div>
                         <?php else: ?>
-                            <span style="font-size:11.5px; color:#94a3b8; font-style:italic;">Belum terkonfirmasi...</span>
+                            <span style="font-size:11.5px; color:#94a3b8; font-style:italic;">Data belum diinput...</span>
                         <?php endif; ?>
                     </td>
                     <td>
                         <?php if($status_du == 'Belum'): ?>
-                            <!-- TOMBOL 1 KLIK SET DAFTAR ULANG -->
-                            <a href="?toggle_du=<?php echo $row['id']; ?>&gel=<?php echo $gel_aktif; ?>&jur=<?php echo urlencode($jur_aktif); ?>&cari=<?php echo urlencode($cari); ?>" class="btn-action bg-proses" onclick="return confirm('Tandai siswa ini SUDAH Daftar Ulang?')">✅ Set Daftar Ulang</a>
+                            <a href="proses_du.php?id=<?php echo $row['id']; ?>" class="btn-action bg-proses">⚙️ Proses DU</a>
                         <?php else: ?>
-                            <!-- TOMBOL 1 KLIK BATALKAN -->
-                            <a href="?toggle_du=<?php echo $row['id']; ?>&gel=<?php echo $gel_aktif; ?>&jur=<?php echo urlencode($jur_aktif); ?>&cari=<?php echo urlencode($cari); ?>" class="btn-action bg-batal" onclick="return confirm('Batalkan status Daftar Ulang siswa ini?')">❌ Batal</a>
-                            
-                            <!-- <a href="cetak_bukti_du.php?id=<?php echo $row['id']; ?>" target="_blank" class="btn-action bg-cetak">🖨️ Cetak Bukti</a> -->
+                            <a href="proses_du.php?id=<?php echo $row['id']; ?>" class="btn-action bg-edit">✏️ Edit</a>
+                            <a href="cetak_bukti_du.php?id=<?php echo $row['id']; ?>" target="_blank" class="btn-action bg-cetak">🖨️ Tanda Terima</a>
                         <?php endif; ?>
                     </td>
                 </tr>

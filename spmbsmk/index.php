@@ -469,7 +469,7 @@ if (isset($_POST['daftar'])) {
 <body>
 
 <div class="container">
-    <?php include "tenggat/tenggat.php" ?>
+    <?php include "../tenggat/tenggat.php" ?>
     <div class="page-header">
         <img src="logo/logopb.jpg" alt="Logo Yayasan">
         <img src="logo/logopemda.png" alt="Logo Pemda">

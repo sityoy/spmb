@@ -273,7 +273,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
             <a href="logout.php" class="btn-action bg-danger-btn" onclick="return confirm('Keluar sistem?')">Logout</a>
         </div>
     </div>
-    <?php include "tenggat/tenggat.php" ?>
+    <?php include "../tenggat/tenggat.php" ?>
     <div class="filter-container">
         <div class="filter-gelombang">
             <span style="font-weight:700; color:#475569; font-size:14px;">🎛️ Filter Tampilan:</span>
@@ -281,6 +281,7 @@ $domain_web = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_
             <a href="?tab=<?php echo $tab_aktif; ?>&gel=1&search=<?php echo urlencode($search); ?>" class="btn-filter <?php echo ($gel_aktif == '1') ? 'active' : ''; ?>">Hanya Gelombang 1</a>
             <a href="?tab=<?php echo $tab_aktif; ?>&gel=2&search=<?php echo urlencode($search); ?>" class="btn-filter <?php echo ($gel_aktif == '2') ? 'active' : ''; ?>">Hanya Gelombang 2</a>
             <a href="daftar_ulang/index.php" class="btn-action" style="background: #e11d48; color: white; padding: 8px 15px; font-weight: 800; border: 2px solid #be123c;">📁 PANEL DAFTAR ULANG</a>
+            <a href="export/excel_semua.php?gel=<?php echo $gel_aktif; ?>" class="btn-action" style="background: #15803d; color: white;">📥 Export Excel</a>
         </div>
 
         <form action="" method="GET" class="search-box">
