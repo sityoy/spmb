@@ -229,7 +229,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label>Agama</label>
                         <select name="agama" required>
                             <?php 
-                            $agama_list = ['Islam', 'Kristen Protestan', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'];
+                            $agama_list = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'];
                             foreach($agama_list as $agm) {
                                 $sel = (isset($data['agama']) && $data['agama'] == $agm) ? 'selected' : '';
                                 echo "<option value='$agm' $sel>$agm</option>";

@@ -11,11 +11,12 @@ if ($selisih <= 3) {
     $status_waktu = ($selisih < 0) ? "*TERLAMBAT " . abs($selisih) . " HARI*" : "*$selisih HARI LAGI*";
     
     // Nomor tujuan dipisahkan koma
-    $nomor_tujuan = "62895414744032,6281383205359"; 
+    // $nomor_tujuan = "62895414744032,6281383205359"; 
+    $nomor_tujuan = "6281313841410,628875139513"; 
     $link_invoice = "https://smkpb1.my.id/spmb/tenggat/invoice/invoice-09062026-2724.pdf";
     
     $pesan = "⚠️ *PENGINGAT PEMBAYARAN SERVER SPMB* ⚠️\n\n";
-    $pesan .= "Halo Admin SMKS PERMATA BUNDA I JAKARTA,\n";
+    $pesan .= "Halo, SMKS PERMATA BUNDA I JAKARTA,\n";
     $pesan .= "Kami dari *SIS.COM* mengingatkan bahwa tagihan untuk layanan sistem SPMB Anda berstatus *UNPAID*.\n\n";
     $pesan .= "📝 *No. Invoice:* #09062026-2724\n";
     $pesan .= "⏳ *Batas Pembayaran:* 11 Juli 2026\n";
@@ -39,7 +40,7 @@ if ($selisih <= 3) {
         'message' => $pesan,
       ),
       CURLOPT_HTTPHEADER => array(
-        'Authorization: 9SkPfHftfHMQgKr6qfbx'
+        'Authorization: vV9YVTVBau4HxGJrM1Jk'
       ),
     ));
     $response = curl_exec($curl);
