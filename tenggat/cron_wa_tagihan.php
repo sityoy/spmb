@@ -10,14 +10,13 @@ if ($selisih <= 3) {
     
     $status_waktu = ($selisih < 0) ? "*TERLAMBAT " . abs($selisih) . " HARI*" : "*$selisih HARI LAGI*";
     
-    // Nomor tujuan dipisahkan koma
-    // $nomor_tujuan = "62895414744032,6281383205359"; 
-    $nomor_tujuan = "6281313841410,628875139513"; 
+    // 3 Nomor tujuan dipisahkan koma
+    $nomor_tujuan = "6281313841410,628875139513,6282112113157"; 
     $link_invoice = "https://smkpb1.my.id/spmb/tenggat/invoice/invoice-09062026-2724.pdf";
     
     $pesan = "⚠️ *PENGINGAT PEMBAYARAN SERVER SPMB* ⚠️\n\n";
-    $pesan .= "Halo, SMKS PERMATA BUNDA I JAKARTA,\n";
-    $pesan .= "Kami dari *SIS.COM* mengingatkan bahwa tagihan untuk layanan sistem SPMB Anda berstatus *UNPAID*.\n\n";
+    $pesan .= "Halo Bapak/Ibu Pimpinan dan Admin SMKS PERMATA BUNDA I JAKARTA,\n\n";
+    $pesan .= "Perkenalkan, saya *Lena Septiana* dari *SIS.COM*. Berhubung seluruh rangkaian sistem Pendaftaran SPMB telah selesai dilaksanakan dengan baik, maka sesuai dengan kesepakatan kerja sama, kami mohon izin untuk menyampaikan tagihan layanan server dan sistem SPMB yang saat ini berstatus *UNPAID*.\n\n";
     $pesan .= "📝 *No. Invoice:* #09062026-2724\n";
     $pesan .= "⏳ *Batas Pembayaran:* 11 Juli 2026\n";
     $pesan .= "🚨 *Status Waktu:* $status_waktu\n\n";
@@ -26,18 +25,19 @@ if ($selisih <= 3) {
     $pesan .= "💳 *Metode Pembayaran (a/n LENA SEPTIANA):*\n";
     $pesan .= "1. BCA: 5370-2568-63\n";
     $pesan .= "2. Bank Jakarta: 43-2231-0520-1\n\n";
-    $pesan .= "Mohon segera selesaikan pembayaran dan kirimkan bukti pembayaran. Abaikan jika sudah membayar.\n\n";
-    $pesan .= "Terima kasih,\n*SIS.COM - Software House & IT Solutions*";
+    $pesan .= "Mohon kesediaannya untuk segera menyelesaikan administrasi pembayaran dan mengirimkan bukti transfer kepada kami. Silakan abaikan pesan ini apabila Bapak/Ibu telah melakukan pembayaran.\n\n";
+    $pesan .= "Terima kasih atas kerja sama yang terjalin dengan baik,\n*SIS.COM - Software House & IT Solutions*";
 
     // EKSEKUSI API FONNTE
     $curl = curl_init();
     curl_setopt_array($curl, array(
       CURLOPT_URL => 'https://api.fonnte.com/send',
       CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_POST => true, // Pastikan menggunakan POST
+      CURLOPT_POST => true,
       CURLOPT_POSTFIELDS => array(
-        'target' => $nomor_tujuan, // Variabel target sudah benar di dalam array
+        'target' => $nomor_tujuan,
         'message' => $pesan,
+        'delay' => '30', // <--- INI PENGATURAN DELAY 30 DETIK ANTAR NOMOR
       ),
       CURLOPT_HTTPHEADER => array(
         'Authorization: vV9YVTVBau4HxGJrM1Jk'
